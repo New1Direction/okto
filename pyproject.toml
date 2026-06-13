@@ -9,6 +9,7 @@ description = "Self-mutating swarm proxy for AI coding agents — live editor, c
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
+authors = [{ name = "ares" }]
 keywords = ["llm", "proxy", "agent", "mitmproxy", "swarm", "chaos-engineering"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -47,6 +48,16 @@ dev = [
 
 [project.scripts]
 selfhswarm = "selfhswarm.cli:main"
+
+# Keep heavy, unused binary assets (3D model exports, marketing video) out of
+# every built artifact regardless of VCS tracking.
+[tool.hatch.build]
+exclude = ["**/*.glb", "**/*.mp4"]
+
+# The sdist ships only the package and its metadata — not the marketing site
+# under docs/ or the root-level screenshots used in the README/dev process.
+[tool.hatch.build.targets.sdist]
+include = ["selfhswarm", "README.md", "LICENSE", "pyproject.toml"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["selfhswarm"]
