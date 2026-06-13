@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Okto — What is it & How to Use It</title>
+  <meta name="description" content="Okto explained in plain English — a self-healing proxy for AI coding agents with 20 practical use cases.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+  <style>
+    /* ── Tokens ─────────────────────────────────────────────────────────── */
+    :root {
+      color-scheme: dark;
+      --void:    #03040b;
+      --base:    #070a14;
+      --s1:      #0d1121;
+      --s2:      #111828;
+      --s3:      #162035;
+
+      --b0: rgba(148,163,184,0.04);
+      --b1: rgba(148,163,184,0.08);
+      --b2: rgba(148,163,184,0.15);
+
+      --violet:     oklch(65% 0.26 280);
+      --violet-lo:  oklch(65% 0.26 280 / 0.12);
+      --violet-md:  oklch(65% 0.26 280 / 0.22);
+      --violet-hi:  oklch(65% 0.26 280 / 0.4);
+      --amber:      oklch(72% 0.20 68);
+      --amber-lo:   oklch(72% 0.20 68 / 0.12);
+      --emerald:    oklch(68% 0.19 160);
+      --emerald-lo: oklch(68% 0.19 160 / 0.12);
+      --rose:       oklch(62% 0.23 12);
+      --rose-lo:    oklch(62% 0.23 12 / 0.12);
+      --sky:        oklch(70% 0.17 225);
+      --sky-lo:     oklch(70% 0.17 225 / 0.12);
+
+      --t1: #f0f4ff;
+      --t2: #8896b0;
+      --t3: #3d4d66;
+
+      --mono: 'JetBrains Mono', monospace;
+      --ui:   'Inter', system-ui, sans-serif;
+      --r: 10px;
+      --r2: 16px;
+      --r3: 24px;
+    }
+
+    /* ── Reset ──────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--void);
+      color: var(--t1);
+      font-family: var(--ui);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    a { color: var(--violet); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: var(--mono); }
+
+    /* ── Layout ─────────────────────────────────────────────────────────── */
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+    section { padding: 80px 0; }
+
+    /* ── Nav ────────────────────────────────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(7,10,20,0.85);
+      backdrop-filter: blur(16px) saturate(180%);
+      border-bottom: 1px solid var(--b1);
+      padding: 0 24px;
+      height: 54px;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .nav-logo {
+      display: flex; align-items: flex-start; gap: 8px;
+      font-family: var(--mono); font-size: 15px; font-weight: 600;
+      color: var(--t1); text-decoration: none;
+    }
+    .nav-logo-icon {
+      width: 52px; height: 52px;
+      flex-shrink: 0;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .nav-sep { flex: 1; }
+    .nav-tag {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.09em;
+      text-transform: uppercase; color: var(--t3);
+      background: var(--s1); border: 1px solid var(--b1);
+      border-radius: 20px; padding: 3px 10px;
+    }
+
+    /* ── Hero ───────────────────────────────────────────────────────────── */
+    .hero {
+      padding: 100px 0 80px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-video {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      z-index: 0;
+      opacity: 0.55;
+      pointer-events: none;
+    }
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: linear-gradient(
+        to right,
+        oklch(2% 0.01 280 / 0.85) 0%,
+        oklch(2% 0.01 280 / 0.55) 45%,
+        oklch(2% 0.01 280 / 0.10) 100%
+      );
+      pointer-events: none;
+    }
+    .hero > .container { position: relative; z-index: 2; }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -120px; left: 50%; transform: translateX(-50%);
+      width: 800px; height: 600px;
+      background: radial-gradient(ellipse at center,
+        oklch(65% 0.26 280 / 0.08) 0%,
+        oklch(70% 0.17 225 / 0.04) 40%,
+        transparent 70%);
+      pointer-events: none;
+    }
+
+    /* ── Hero layout ─────────────────────────────────────────────────────── */
+    .hero-layout {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 48px;
+      align-items: flex-start;
+      text-align: left;
+    }
+    @media (max-width: 780px) {
+      .hero-layout { grid-template-columns: 1fr; text-align: center; }
+      .hero-3d { display: none; }
+    }
+    .hero-content { min-width: 0; }
+    .hero-content .hero-kicker { display: inline-flex; }
+    .hero-3d {
+      width: 320px; height: 320px;
+      flex-shrink: 0;
+    }
+    model-viewer {
+      width: 320px; height: 320px;
+      background: transparent;
+      border-radius: var(--r3);
+      --progress-bar-color: transparent;
+    }
+    .hero-3d-fallback {
+      width: 320px; height: 320px;
+      border-radius: var(--r3);
+      overflow: hidden;
+      display: none;
+    }
+    .hero-3d-fallback img { width: 100%; height: 100%; object-fit: cover; }
+
+    .hero-kicker {
+      display: inline-flex; align-items: flex-start; gap: 7px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--violet);
+      background: var(--violet-lo);
+      border: 1px solid oklch(65% 0.26 280 / 0.25);
+      border-radius: 20px; padding: 4px 12px;
+      margin-bottom: 28px;
+    }
+    .hero-kicker svg { width: 11px; height: 11px; stroke: var(--violet); }
+
+    .hero h1 {
+      font-size: clamp(42px, 6vw, 72px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      margin-bottom: 20px;
+    }
+    .hero h1 .grad {
+      background: linear-gradient(135deg,
+        var(--violet) 0%,
+        var(--sky) 50%,
+        var(--emerald) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: clamp(16px, 2vw, 20px);
+      color: var(--t2);
+      max-width: 600px;
+      margin: 0 auto 44px;
+      line-height: 1.6;
+      font-weight: 400;
+    }
+
+    .hero-cmd {
+      display: inline-flex; align-items: flex-start; gap: 10px;
+      background: var(--s1);
+      border: 1px solid var(--b2);
+      border-radius: var(--r);
+      padding: 10px 16px;
+      font-family: var(--mono); font-size: 14px; color: var(--t1);
+    }
+    .hero-cmd .prompt { color: var(--emerald); user-select: none; }
+    .hero-cmd .cmd { color: var(--t1); }
+    .hero-cmd .arg { color: var(--violet); }
+    .copy-btn {
+      background: none; border: none;
+      color: var(--t3); cursor: pointer;
+      padding: 2px; border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .copy-btn:hover { color: var(--t2); }
+
+    .hero-scroll {
+      margin-top: 60px; opacity: 0.3;
+      animation: bounce 2s ease-in-out infinite;
+    }
+    @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
+
+    /* ── Analogy block ──────────────────────────────────────────────────── */
+    .analogy-wrap {
+      background: var(--s1);
+      border: 1px solid var(--b1);
+      border-left: 3px solid var(--amber);
+      border-radius: var(--r2);
+      padding: 32px 36px;
+      position: relative;
+      overflow: hidden;
+    }
+    .analogy-wrap::after {
+      content: '';
+      position: absolute;
+      top: -50px; right: -50px;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, var(--amber-lo) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .analogy-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--amber);
+      margin-bottom: 12px; display: flex; align-items: flex-start; gap: 7px;
+    }
+    .analogy-label svg { stroke: var(--amber); }
+    .analogy-text {
+      font-size: 18px; font-weight: 400;
+      color: var(--t1); line-height: 1.7;
+    }
+    .analogy-text strong { color: var(--amber); font-weight: 600; }
+    .analogy-text em { color: var(--violet); font-style: normal; font-weight: 500; }
+
+    /* ── Section title ──────────────────────────────────────────────────── */
+    .section-title {
+      font-size: clamp(26px, 4vw, 38px);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      margin-bottom: 12px;
+    }
+    .section-sub {
+      font-size: 16px; color: var(--t2);
+      max-width: 560px; line-height: 1.65;
+    }
+    .section-hd { margin-bottom: 48px; }
+
+    /* ── How it works ───────────────────────────────────────────────────── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .step {
+      background: var(--s1);
+      border: 1px solid var(--b1);
+      border-radius: var(--r2);
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .step:hover { border-color: var(--b2); transform: translateY(-2px); }
+    .step-n {
+      font-family: var(--mono); font-size: 11px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--t3); margin-bottom: 14px;
+    }
+    .step-icon {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      display: flex; align-items: flex-start; justify-content: center;
+      margin-bottom: 14px;
+    }
+    .step-icon svg { flex-shrink: 0; }
+    .step h3 {
+      font-size: 16px; font-weight: 700; letter-spacing: -0.01em;
+      margin-bottom: 7px; color: var(--t1);
+    }
+    .step p { font-size: 13.5px; color: var(--t2); line-height: 1.65; }
+    .step.c1 .step-icon { background: var(--sky-lo); }
+    .step.c1 .step-icon svg { stroke: var(--sky); }
+    .step.c2 .step-icon { background: var(--amber-lo); }
+    .step.c2 .step-icon svg { stroke: var(--amber); }
+    .step.c3 .step-icon { background: var(--emerald-lo); }
+    .step.c3 .step-icon svg { stroke: var(--emerald); }
+    .step.c4 .step-icon { background: var(--violet-lo); }
+    .step.c4 .step-icon svg { stroke: var(--violet); }
+    .step.c5 .step-icon { background: var(--rose-lo); }
+    .step.c5 .step-icon svg { stroke: var(--rose); }
+
+    /* ── Flow diagram ───────────────────────────────────────────────────── */
+    .flow {
+      display: flex; align-items: flex-start; gap: 0;
+      overflow-x: auto; padding: 8px 0;
+    }
+    .flow-node {
+      background: var(--s1);
+      border: 1px solid var(--b2);
+      border-radius: var(--r);
+      padding: 12px 16px;
+      font-size: 13px; font-weight: 600;
+      white-space: nowrap; flex-shrink: 0;
+      text-align: center;
+    }
+    .flow-node .fl { font-size: 10px; color: var(--t3); font-weight: 400; display: block; margin-top: 2px; font-family: var(--mono); }
+    .flow-node.violet { border-color: oklch(65% 0.26 280 / 0.4); color: var(--violet); background: var(--violet-lo); }
+    .flow-node.emerald { border-color: oklch(68% 0.19 160 / 0.4); color: var(--emerald); background: var(--emerald-lo); }
+    .flow-node.amber { border-color: oklch(72% 0.20 68 / 0.4); color: var(--amber); background: var(--amber-lo); }
+    .flow-arrow {
+      flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-start;
+      padding: 0 10px; gap: 3px;
+    }
+    .flow-arrow svg { stroke: var(--t3); }
+    .flow-arrow span { font-size: 9px; color: var(--t3); font-family: var(--mono); white-space: nowrap; }
+
+    /* ── Use cases ──────────────────────────────────────────────────────── */
+    .uc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 14px;
+    }
+    .uc-card {
+      background: var(--s1);
+      border: 1px solid var(--b1);
+      border-radius: var(--r2);
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, background 0.2s, transform 0.2s;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    .uc-card:hover {
+      border-color: var(--b2);
+      background: var(--s2);
+      transform: translateY(-2px);
+    }
+    .uc-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .uc-card.cat-debug::before   { background: var(--amber); }
+    .uc-card.cat-test::before    { background: var(--violet); }
+    .uc-card.cat-prod::before    { background: var(--emerald); }
+    .uc-card.cat-research::before{ background: var(--sky); }
+
+    .uc-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+    .uc-num {
+      font-family: var(--mono); font-size: 11px; font-weight: 700;
+      flex-shrink: 0; margin-top: 2px;
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      display: flex; align-items: flex-start; justify-content: center;
+    }
+    .cat-debug   .uc-num { background: var(--amber-lo);   color: var(--amber); }
+    .cat-test    .uc-num { background: var(--violet-lo);  color: var(--violet); }
+    .cat-prod    .uc-num { background: var(--emerald-lo); color: var(--emerald); }
+    .cat-research .uc-num { background: var(--sky-lo);    color: var(--sky); }
+
+    .uc-card h3 {
+      font-size: 14px; font-weight: 700; color: var(--t1);
+      letter-spacing: -0.01em; line-height: 1.3;
+    }
+    .uc-card p { font-size: 12.5px; color: var(--t2); line-height: 1.65; }
+    .uc-tag {
+      display: inline-flex; align-items: flex-start;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; border-radius: 4px;
+      padding: 1px 6px; margin-top: 10px;
+    }
+    .cat-debug   .uc-tag { background: var(--amber-lo);   color: var(--amber); }
+    .cat-test    .uc-tag { background: var(--violet-lo);  color: var(--violet); }
+    .cat-prod    .uc-tag { background: var(--emerald-lo); color: var(--emerald); }
+    .cat-research .uc-tag { background: var(--sky-lo);    color: var(--sky); }
+
+    /* ── Legend ─────────────────────────────────────────────────────────── */
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      margin-bottom: 32px;
+    }
+    .legend-item {
+      display: flex; align-items: flex-start; gap: 6px;
+      font-size: 12px; color: var(--t2);
+    }
+    .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+    .ld-debug   { background: var(--amber); }
+    .ld-test    { background: var(--violet); }
+    .ld-prod    { background: var(--emerald); }
+    .ld-research { background: var(--sky); }
+
+    /* ── Quick start ────────────────────────────────────────────────────── */
+    .qs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 700px) { .qs-grid { grid-template-columns: 1fr; } }
+
+    .qs-card {
+      background: var(--s1);
+      border: 1px solid var(--b1);
+      border-radius: var(--r2);
+      overflow: hidden;
+    }
+    .qs-hd {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--b0);
+      font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.09em;
+      color: var(--t3);
+      display: flex; align-items: flex-start; gap: 7px;
+    }
+    .qs-hd svg { flex-shrink: 0; }
+    pre.qs-code {
+      padding: 16px;
+      font-family: var(--mono); font-size: 12.5px;
+      line-height: 1.8; color: var(--t2);
+      overflow-x: auto;
+    }
+    pre.qs-code .kw   { color: var(--violet); }
+    pre.qs-code .val  { color: var(--emerald); }
+    pre.qs-code .cmt  { color: var(--t3); }
+    pre.qs-code .flag { color: var(--amber); }
+
+    /* ── Footer ─────────────────────────────────────────────────────────── */
+    footer {
+      padding: 40px 24px;
+      text-align: center;
+      border-top: 1px solid var(--b1);
+      color: var(--t3); font-size: 12px;
+    }
+    footer a { color: var(--t3); }
+
+    /* ── Divider ────────────────────────────────────────────────────────── */
+    .div { height: 1px; background: var(--b1); margin: 0; }
+
+    /* ── Scroll reveal ──────────────────────────────────────────────────── */
+    .reveal { opacity: 0; transform: translateY(24px); }
+
+    /* ── Terminal window ────────────────────────────────────────────────── */
+    .terminal {
+      background: var(--s1);
+      border: 1px solid var(--b2);
+      border-radius: var(--r2);
+      overflow: hidden;
+      margin-top: 32px;
+    }
+    .term-bar {
+      background: var(--s2);
+      border-bottom: 1px solid var(--b1);
+      padding: 8px 14px;
+      display: flex; align-items: flex-start; gap: 6px;
+    }
+    .term-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .td-r { background: #ff5f56; }
+    .td-y { background: #ffbd2e; }
+    .td-g { background: #27c93f; }
+    .term-title { flex: 1; text-align: center; font-size: 11px; color: var(--t3); font-family: var(--mono); }
+    pre.term-body {
+      padding: 20px;
+      font-family: var(--mono); font-size: 13px;
+      line-height: 2; color: var(--t1);
+      overflow-x: auto;
+    }
+    .t-prompt { color: var(--t3); }
+    .t-cmd    { color: var(--t1); }
+    .t-arg    { color: var(--violet); }
+    .t-flag   { color: var(--amber); }
+    .t-out    { color: var(--t2); }
+    .t-ok     { color: var(--emerald); }
+    .t-url    { color: var(--sky); }
+    .t-warn   { color: var(--amber); }
+
+    /* ── Pulse dot ──────────────────────────────────────────────────────── */
+    @keyframes pulse-dot { 0%,100%{opacity:1}50%{opacity:0.3} }
+    .live-dot {
+      display: inline-block;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 6px var(--emerald);
+      animation: pulse-dot 2s ease-in-out infinite;
+      margin-right: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav>
+  <a class="nav-logo" href="#"><span style="color:var(--violet);font-weight:700;font-size:16px;letter-spacing:0.06em">Okto</span></a>
+  <div class="nav-sep"></div>
+  <span class="nav-tag">Plain-English Guide</span>
+</nav>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <video class="hero-video" autoplay muted loop playsinline>
+    <source src="bg2.mp4" type="video/mp4">
+  </video>
+  <div class="hero-overlay"></div>
+  <div class="container">
+    <div class="hero-layout">
+      <div class="hero-content">
+        <div class="hero-kicker" id="hero-kicker">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 15c6.667-6 13.333 0 20-6"/><path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993"/><path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993"/><path d="m17 6-2.5-2.5"/><path d="m7 18 2.5 2.5"/>
+      </svg>
+      Okto — v0.1
+    </div>
+
+    <h1 id="hero-h1">
+      A proxy that <span class="grad">learns and self‑heals</span><br>
+      so your AI agents never break.
+    </h1>
+
+    <p class="hero-sub" id="hero-sub">
+      Sits invisibly between your AI coding assistant and the AI provider's servers.
+      Watches every message. Catches every glitch. Fixes it silently. Remembers the fix forever.
+    </p>
+
+    <div class="hero-cmd" id="hero-cmd">
+      <span class="prompt">$</span>
+      <span class="cmd">okto <span class="arg">run</span> --client claude</span>
+      <button class="copy-btn" onclick="copyCmd(this)" title="Copy">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+        </svg>
+      </button>
+    </div>
+
+      </div>
+
+      <!-- 3D mascot -->
+      <div class="hero-3d">
+        <model-viewer
+          src="okto.glb"
+          alt="Okto"
+         
+         
+         
+          camera-controls
+          disable-zoom
+          interaction-prompt="none"
+          style="width:620px;height:620px;background:transparent;--progress-bar-color:transparent;opacity:0.5"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='block'"
+        ></model-viewer>
+        <img src="okto_hero.jpg" alt="Okto" style="display:none;width:340px;height:340px;object-fit:cover">
+      </div>
+    </div><!-- hero-layout -->
+
+    <div class="hero-scroll" style="text-align:center;margin-top:40px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 9 6 6 6-6"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ── Analogy ── -->
+<section style="padding: 64px 0;">
+  <div class="container">
+    <div class="analogy-wrap reveal">
+      <div class="analogy-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 12 2.1 5.1"/><path d="m22 2-10 10"/>
+        </svg>
+        The Simple Analogy
+      </div>
+      <p class="analogy-text">
+        An octopus can <strong>rewrite its own RNA</strong> on the fly to survive freezing water — no waiting for evolution.
+        <strong>Okto</strong> does the same thing for your AI agent's network traffic.
+        When an AI provider sends a <strong>garbled or broken message</strong>,
+        Okto catches it, <em>figures out the fix in milliseconds</em>,
+        applies it invisibly, and writes that fix into its permanent memory — its "genome" —
+        so every future session is already protected.
+        <strong>Your agent never sees the broken data. Ever.</strong>
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ── What it does ── -->
+<section id="how-it-works">
+  <div class="container">
+    <div class="section-hd reveal">
+      <div class="section-title">What does it actually do?</div>
+      <p class="section-sub">Five things, working together, in the background — all automatic.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step c1 reveal">
+        <div class="step-n">Step 1</div>
+        <div class="step-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </div>
+        <h3>Intercepts traffic</h3>
+        <p>Acts as a local proxy between your AI tool (Claude, Gemini, Cursor…) and the provider's servers. Every message passes through it — exactly like a smart router.</p>
+      </div>
+
+      <div class="step c2 reveal">
+        <div class="step-n">Step 2</div>
+        <div class="step-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>
+            <path d="M12 9v4"/><path d="M12 17h.01"/>
+          </svg>
+        </div>
+        <h3>Detects anomalies</h3>
+        <p>Knows what "correct" AI streaming data looks like. The instant it sees anything wrong — missing prefix, broken JSON, truncated stream — it flags it automatically.</p>
+      </div>
+
+      <div class="step c3 reveal">
+        <div class="step-n">Step 3</div>
+        <div class="step-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+        </div>
+        <h3>Patches it silently</h3>
+        <p>Rewrites the broken data chunk on the fly — before your agent ever sees it. The agent receives clean, correct data and continues working without interruption.</p>
+      </div>
+
+      <div class="step c4 reveal">
+        <div class="step-n">Step 4</div>
+        <div class="step-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 15c6.667-6 13.333 0 20-6"/><path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993"/>
+            <path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993"/>
+            <path d="m17 6-2.5-2.5"/><path d="m7 18 2.5 2.5"/>
+          </svg>
+        </div>
+        <h3>Writes the fix into its genome</h3>
+        <p>Every fix gets stored permanently as a "mutation" — a rule for how to repair this type of broken data in the future. Next session, the fix is already there. No config needed.</p>
+      </div>
+
+      <div class="step c5 reveal">
+        <div class="step-n">Step 5</div>
+        <div class="step-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <h3>Spreads knowledge to the swarm</h3>
+        <p>Optionally connects to other Okto instances via the RNA bus. One machine discovers a fix — every machine in your team benefits instantly, like a herd immune system.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ── Flow diagram ── -->
+<section style="padding: 64px 0;">
+  <div class="container">
+    <div class="section-hd reveal">
+      <div class="section-title">The data path</div>
+      <p class="section-sub">Every message your AI agent sends or receives travels through this pipeline.</p>
+    </div>
+    <div class="terminal reveal">
+      <div class="term-bar">
+        <div class="term-dot td-r"></div>
+        <div class="term-dot td-y"></div>
+        <div class="term-dot td-g"></div>
+        <span class="term-title">Traffic flow</span>
+      </div>
+      <div class="flow" style="padding: 28px 24px;">
+        <div class="flow-node">
+          🤖 Your Agent
+          <span class="fl">claude / gemini / cursor</span>
+        </div>
+        <div class="flow-arrow">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          <span>HTTP_PROXY</span>
+        </div>
+        <div class="flow-node violet">
+          ⬡ Okto
+          <span class="fl">localhost:8877</span>
+        </div>
+        <div class="flow-arrow">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          <span>CONNECT + TLS</span>
+        </div>
+        <div class="flow-node">
+          🏢 Provider API
+          <span class="fl">api.anthropic.com</span>
+        </div>
+        <div class="flow-arrow">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          <span>SSE stream</span>
+        </div>
+        <div class="flow-node amber">
+          ⚡ State Machine
+          <span class="fl">detect + patch</span>
+        </div>
+        <div class="flow-arrow">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          <span>clean data</span>
+        </div>
+        <div class="flow-node emerald">
+          ✓ Clean Response
+          <span class="fl">fixed before agent sees it</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ── 20 Use cases ── -->
+<section id="use-cases">
+  <div class="container">
+    <div class="section-hd reveal">
+      <div class="section-title">20 ways to use it</div>
+      <p class="section-sub">From casual debugging to production swarm deployments.</p>
+    </div>
+
+    <div class="legend reveal">
+      <div class="legend-item"><div class="legend-dot ld-debug"></div> Debugging</div>
+      <div class="legend-item"><div class="legend-dot ld-test"></div> Testing</div>
+      <div class="legend-item"><div class="legend-dot ld-prod"></div> Production</div>
+      <div class="legend-item"><div class="legend-dot ld-research"></div> Research</div>
+    </div>
+
+    <div class="uc-grid">
+
+      <!-- Debugging 1–5 -->
+      <div class="uc-card cat-debug">
+        <div class="uc-top">
+          <div class="uc-num">1</div>
+          <h3>Find why your agent crashed mid-task</h3>
+        </div>
+        <p>Open the Traffic Inspector dashboard while running your agent. When the crash happens, click the session to see the exact byte chunk that caused it — the raw bytes, the anomaly type, and what the fix would have been.</p>
+        <div class="uc-tag">Debugging</div>
+      </div>
+
+      <div class="uc-card cat-debug">
+        <div class="uc-top">
+          <div class="uc-num">2</div>
+          <h3>Decode a silent "empty response" from Claude</h3>
+        </div>
+        <p>Sometimes Claude returns nothing and your agent just hangs. Okto shows you the raw SSE frames so you can see if the provider returned 0 bytes, a malformed <code>data: [DONE]</code>, or a network timeout.</p>
+        <div class="uc-tag">Debugging</div>
+      </div>
+
+      <div class="uc-card cat-debug">
+        <div class="uc-top">
+          <div class="uc-num">3</div>
+          <h3>Replay a broken session without re-running your agent</h3>
+        </div>
+        <p>Hit "Replay with genome" in the dashboard to re-run a recorded session's raw chunks through the state machine. See whether your current genome fixes the bug without touching the provider again.</p>
+        <div class="uc-tag">Debugging</div>
+      </div>
+
+      <div class="uc-card cat-debug">
+        <div class="uc-top">
+          <div class="uc-num">4</div>
+          <h3>See exactly what the AI provider actually sends</h3>
+        </div>
+        <p>Provider docs don't always match reality. Okto captures the literal bytes coming over the wire — including undocumented fields, edge-case headers, and content-type mismatches you'd never see in a client SDK log.</p>
+        <div class="uc-tag">Debugging</div>
+      </div>
+
+      <div class="uc-card cat-debug">
+        <div class="uc-top">
+          <div class="uc-num">5</div>
+          <h3>Diagnose intermittent JSON parsing failures</h3>
+        </div>
+        <p>If your agent fails to parse a response only 1 in 50 times, Okto captures every chunk of every session. Filter for anomalous chunks and find the exact malformed JSON fragment that's slipping through.</p>
+        <div class="uc-tag">Debugging</div>
+      </div>
+
+      <!-- Testing 6–10 -->
+      <div class="uc-card cat-test">
+        <div class="uc-top">
+          <div class="uc-num">6</div>
+          <h3>Stress-test your agent against impossible edge cases</h3>
+        </div>
+        <p>Use <code>selfhswarm fabricate</code> to generate synthetic sessions that look real but contain injected chaos — truncated streams, bare JSON without SSE prefixes, model swaps mid-stream — before real providers send them.</p>
+        <div class="uc-tag">Testing</div>
+      </div>
+
+      <div class="uc-card cat-test">
+        <div class="uc-top">
+          <div class="uc-num">7</div>
+          <h3>Test provider migration before you switch</h3>
+        </div>
+        <p>Planning to move from Anthropic to OpenAI? Route both through Okto simultaneously. Compare their streaming protocols side by side and see which mutations your genome needs before your agent handles both.</p>
+        <div class="uc-tag">Testing</div>
+      </div>
+
+      <div class="uc-card cat-test">
+        <div class="uc-top">
+          <div class="uc-num">8</div>
+          <h3>Run protocol regression tests in CI/CD</h3>
+        </div>
+        <p>Add Okto to your CI pipeline. Every pull request routes test API calls through it. If a code change causes the agent to mishandle an SSE stream, the anomaly appears immediately — before it ships.</p>
+        <div class="uc-tag">Testing</div>
+      </div>
+
+      <div class="uc-card cat-test">
+        <div class="uc-top">
+          <div class="uc-num">9</div>
+          <h3>Validate a new agent framework handles malformed SSE</h3>
+        </div>
+        <p>Switching from LangChain to a custom agent loop? Replay your anomaly library through the fabricator against the new framework. If it crashes on chunk 4, you know before you deploy.</p>
+        <div class="uc-tag">Testing</div>
+      </div>
+
+      <div class="uc-card cat-test">
+        <div class="uc-top">
+          <div class="uc-num">10</div>
+          <h3>Build a golden test library from real sessions</h3>
+        </div>
+        <p>Every session is saved as a JSONL file. Curate the interesting ones — sessions with rare anomalies — into a library. Use them as fixtures to test future versions of your agent or genome.</p>
+        <div class="uc-tag">Testing</div>
+      </div>
+
+      <!-- Production 11–15 -->
+      <div class="uc-card cat-prod">
+        <div class="uc-top">
+          <div class="uc-num">11</div>
+          <h3>Make your agent self-healing in production</h3>
+        </div>
+        <p>Deploy Okto as a sidecar proxy on your server. When a provider starts sending broken data during an outage, the proxy fixes it automatically — your agent keeps working, your users see nothing.</p>
+        <div class="uc-tag">Production</div>
+      </div>
+
+      <div class="uc-card cat-prod">
+        <div class="uc-top">
+          <div class="uc-num">12</div>
+          <h3>Share fixes instantly across your whole team</h3>
+        </div>
+        <p>Run a broker with <code>selfhswarm broker</code>. Every developer's instance joins the RNA bus. One person's agent discovers a fix — everyone's genome updates within seconds. No Slack message required.</p>
+        <div class="uc-tag">Production</div>
+      </div>
+
+      <div class="uc-card cat-prod">
+        <div class="uc-top">
+          <div class="uc-num">13</div>
+          <h3>Monitor rate limit behavior without client SDK noise</h3>
+        </div>
+        <p>When you hit a rate limit, providers send very specific HTTP 429 responses with retry headers. Okto captures these at the wire level, so you can see exactly when, how often, and for how long you're throttled.</p>
+        <div class="uc-tag">Production</div>
+      </div>
+
+      <div class="uc-card cat-prod">
+        <div class="uc-top">
+          <div class="uc-num">14</div>
+          <h3>Survive provider outages transparently</h3>
+        </div>
+        <p>When a provider has a partial outage — serving malformed chunks to some requests — the genome kicks in immediately. Your agent continues working while other teams are filing bug reports.</p>
+        <div class="uc-tag">Production</div>
+      </div>
+
+      <div class="uc-card cat-prod">
+        <div class="uc-top">
+          <div class="uc-num">15</div>
+          <h3>Audit what AI providers actually send to your systems</h3>
+        </div>
+        <p>For compliance or security purposes, Okto gives you a complete record of every byte exchanged between your systems and AI providers — something no client SDK offers out of the box.</p>
+        <div class="uc-tag">Production</div>
+      </div>
+
+      <!-- Research 16–20 -->
+      <div class="uc-card cat-research">
+        <div class="uc-top">
+          <div class="uc-num">16</div>
+          <h3>Study how different providers stream differently</h3>
+        </div>
+        <p>Anthropic, OpenAI, Google, Mistral — they all claim SSE, but each has quirks. Route the same prompts through each provider and compare their raw streaming behavior: chunk sizes, timing, event formats.</p>
+        <div class="uc-tag">Research</div>
+      </div>
+
+      <div class="uc-card cat-research">
+        <div class="uc-top">
+          <div class="uc-num">17</div>
+          <h3>Measure real latency — not SDK latency</h3>
+        </div>
+        <p>Client SDKs hide connection overhead, retry logic, and buffering. Okto measures time-to-first-chunk at the TCP level, giving you the real latency picture for benchmarking providers or regions.</p>
+        <div class="uc-tag">Research</div>
+      </div>
+
+      <div class="uc-card cat-research">
+        <div class="uc-top">
+          <div class="uc-num">18</div>
+          <h3>Capture rare streaming anomalies for academic study</h3>
+        </div>
+        <p>Protocol anomalies from production AI providers are hard to reproduce in a lab. Okto records them faithfully as they occur. Build a dataset of real-world AI streaming edge cases over time.</p>
+        <div class="uc-tag">Research</div>
+      </div>
+
+      <div class="uc-card cat-research">
+        <div class="uc-top">
+          <div class="uc-num">19</div>
+          <h3>Experiment with custom mutation rules</h3>
+        </div>
+        <p>The genome is an append-only ledger — you can inspect and extend it directly. Write custom mutations to transform, filter, or annotate AI responses at the byte level for experiments your framework can't reach.</p>
+        <div class="uc-tag">Research</div>
+      </div>
+
+      <div class="uc-card cat-research">
+        <div class="uc-top">
+          <div class="uc-num">20</div>
+          <h3>Build a distributed anomaly detection network</h3>
+        </div>
+        <p>Connect dozens of Okto instances at different locations to a shared broker. When a provider has a regional issue, the anomaly surfaces globally in seconds — like a nervous system for AI infrastructure.</p>
+        <div class="uc-tag">Research</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ── Quick start ── -->
+<section id="quick-start">
+  <div class="container">
+    <div class="section-hd reveal">
+      <div class="section-title">Get started in 60 seconds</div>
+      <p class="section-sub">No configuration files. No cloud account. Just run it.</p>
+    </div>
+
+    <div class="qs-grid">
+      <div class="qs-card reveal">
+        <div class="qs-hd">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--emerald)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
+          Install &amp; run
+        </div>
+        <pre class="qs-code"><span class="t-prompt">$</span> <span class="t-cmd">pip install</span> <span class="t-arg">selfhswarm</span>
+
+<span class="t-prompt">$</span> <span class="t-cmd">selfhswarm ca trust</span>     <span class="cmt"># trust the local TLS cert</span>
+
+<span class="t-prompt">$</span> <span class="t-cmd">selfhswarm</span> <span class="t-arg">run</span> <span class="t-flag">--client</span> <span class="t-arg">claude</span>
+<span class="t-ok">✓</span> Genome loaded: 0 mutations
+<span class="t-ok">✓</span> Proxy active on port 8877
+<span class="t-ok">✓</span> Dashboard live at <span class="t-url">http://localhost:7878</span></pre>
+      </div>
+
+      <div class="qs-card reveal">
+        <div class="qs-hd">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Share with your team (RNA Bus)
+        </div>
+        <pre class="qs-code"><span class="t-prompt">#</span> <span class="cmt">On your shared server:</span>
+<span class="t-prompt">$</span> <span class="t-cmd">selfhswarm broker</span> <span class="t-flag">--port</span> <span class="t-arg">9373</span>
+
+<span class="t-prompt">#</span> <span class="cmt">Each developer runs:</span>
+<span class="t-prompt">$</span> <span class="t-cmd">selfhswarm</span> <span class="t-arg">run</span> \
+    <span class="t-flag">--broker</span> <span class="t-arg">ws://shared-server:9373</span>
+
+<span class="t-prompt">#</span> <span class="cmt">Now fixes spread automatically</span>
+<span class="t-ok">✓</span> Connected to RNA broker</pre>
+      </div>
+
+      <div class="qs-card reveal">
+        <div class="qs-hd">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          Fabricate chaos for testing
+        </div>
+        <pre class="qs-code"><span class="t-prompt">#</span> <span class="cmt">Simulate a truncated stream:</span>
+<span class="t-prompt">$</span> <span class="t-cmd">selfhswarm fabricate</span> \
+    <span class="t-flag">-s</span> <span class="t-arg">stream_truncation</span> \
+    <span class="t-flag">-o</span> <span class="t-arg">chaos.jsonl</span>
+
+<span class="t-prompt">#</span> <span class="cmt">Other scenarios available:</span>
+<span class="t-warn">bare_json</span>  <span class="t-warn">model_swap</span>  <span class="t-warn">iam_hallucination</span>
+<span class="t-warn">reflection_loop</span>  <span class="t-warn">infinite_context</span></pre>
+      </div>
+
+      <div class="qs-card reveal">
+        <div class="qs-hd">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--sky)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
+          </svg>
+          Inspect the genome
+        </div>
+        <pre class="qs-code"><span class="t-prompt">#</span> <span class="cmt">See all learned fixes:</span>
+<span class="t-prompt">$</span> <span class="t-cmd">selfhswarm genome list</span>
+
+<span class="t-out"> ID       Client  Confidence  Description</span>
+<span class="t-ok"> a3f2c1d8  claude   1.00       sse prefix repair</span>
+<span class="t-ok"> b9e7a2c1  claude   0.92       json parse repair</span>
+
+<span class="t-prompt">#</span> <span class="cmt">Reset if needed:</span>
+<span class="t-prompt">$</span> <span class="t-cmd">selfhswarm genome clear</span></pre>
+      </div>
+    </div>
+
+    <!-- Dashboard preview callout -->
+    <div style="margin-top: 32px;" class="reveal">
+      <div style="
+        background: var(--s1);
+        border: 1px solid var(--b2);
+        border-radius: var(--r2);
+        padding: 20px 24px;
+        display: flex; align-items: flex-start; gap: 16px;
+      ">
+        <div style="flex-shrink:0;">
+          <div style="
+            width: 42px; height: 42px;
+            background: var(--violet-lo);
+            border: 1px solid oklch(65% 0.26 280 / 0.3);
+            border-radius: 10px;
+            display: flex; align-items: flex-start; justify-content: center;
+          ">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <div style="font-weight:700; font-size:14px; margin-bottom:4px;">
+            <span class="live-dot"></span>Live Traffic Inspector
+          </div>
+          <div style="font-size:13px; color:var(--t2);">
+            The dashboard opens automatically at <code style="color:var(--sky)">http://localhost:7878</code> when you run <code>selfhswarm run</code>.
+            Every session, anomaly, mutation, and replay is one click away — no setup required.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ── Footer ── -->
+<footer>
+  <div style="margin-bottom:8px; font-family:var(--mono); font-size:13px;">
+    Okto
+  </div>
+  <div>Self-mutating swarm proxy for AI coding agents.</div>
+  <div style="margin-top:6px; color: var(--t3);">
+    Built with Python · FastAPI · anime.js · Simple Icons
+  </div>
+</footer>
+
+<script>
+'use strict';
+
+/* ── Hero entrance ─────────────────────────────────────────────── */
+anime.timeline({ easing: 'easeOutExpo' })
+  .add({ targets: '#hero-kicker', opacity: [0,1], translateY: [-12,0], duration: 500 })
+  .add({ targets: '#hero-h1',     opacity: [0,1], translateY: [20,0],  duration: 700 }, '-=200')
+  .add({ targets: '#hero-sub',    opacity: [0,1], translateY: [16,0],  duration: 600 }, '-=400')
+  .add({ targets: '#hero-cmd',    opacity: [0,1], translateY: [12,0],  duration: 500, scale:[0.97,1] }, '-=300');
+
+/* ── Scroll reveal with IntersectionObserver ─────────────────────── */
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    const el = entry.target;
+    anime({
+      targets: el,
+      opacity: [0, 1],
+      translateY: [20, 0],
+      duration: 500,
+      easing: 'easeOutQuart',
+    });
+    io.unobserve(el);
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+/* ── Use case cards — staggered in groups ─────────────────────────── */
+const ucObs = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    // Find all siblings in the same group (4 per row)
+    const grid = entry.target.closest('.uc-grid');
+    const cards = [...grid.querySelectorAll('.uc-card:not([data-revealed])')];
+    if (cards.length === 0) return;
+    // Reveal next batch of 4
+    const batch = cards.slice(0, 4);
+    batch.forEach(c => c.dataset.revealed = '1');
+    anime({
+      targets: batch,
+      opacity: [0, 1],
+      translateY: [20, 0],
+      delay: anime.stagger(70),
+      duration: 450,
+      easing: 'easeOutQuart',
+    });
+    ucObs.unobserve(entry.target);
+  });
+}, { threshold: 0.08, rootMargin: '0px 0px -20px 0px' });
+
+document.querySelectorAll('.uc-card').forEach(el => ucObs.observe(el));
+
+/* ── Copy command ─────────────────────────────────────────────────── */
+function copyCmd(btn) {
+  navigator.clipboard.writeText('selfhswarm run --client claude').then(() => {
+    const orig = btn.innerHTML;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--emerald)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+    setTimeout(() => { btn.innerHTML = orig; }, 1500);
+  });
+}
+</script>
+</body>
+</html>

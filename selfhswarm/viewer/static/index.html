@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>selfHswarm · Traffic Inspector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,300..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- anime.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
+  <!-- Lucide icons -->
+  <script src="https://unpkg.com/lucide@0.475.0/dist/umd/lucide.js"></script>
+  <style>
+    /* ── Tokens ─────────────────────────────────────────────────── */
+    :root {
+      color-scheme: dark;
+
+      /* Surfaces */
+      --void:    #03040b;
+      --base:    #070a14;
+      --s1:      #0d1121;
+      --s2:      #111828;
+      --s3:      #162035;
+
+      /* Borders */
+      --b0: rgba(148,163,184,0.05);
+      --b1: rgba(148,163,184,0.09);
+      --b2: rgba(148,163,184,0.16);
+
+      /* Accent — perceptual OKLCH palette */
+      --violet:     oklch(65% 0.26 280);
+      --violet-lo:  oklch(65% 0.26 280 / 0.12);
+      --violet-md:  oklch(65% 0.26 280 / 0.22);
+      --violet-glow:oklch(65% 0.26 280 / 0.35);
+
+      --amber:      oklch(72% 0.20 68);
+      --amber-lo:   oklch(72% 0.20 68 / 0.12);
+      --amber-glow: oklch(72% 0.20 68 / 0.40);
+
+      --emerald:    oklch(68% 0.19 160);
+      --emerald-lo: oklch(68% 0.19 160 / 0.12);
+
+      --rose:       oklch(62% 0.23 12);
+      --rose-lo:    oklch(62% 0.23 12 / 0.12);
+
+      --sky:        oklch(70% 0.17 225);
+      --sky-lo:     oklch(70% 0.17 225 / 0.12);
+
+      /* Text */
+      --t1: #f0f4ff;
+      --t2: #8896b0;
+      --t3: #3d4d66;
+      --t-code: #a5b4fc;
+
+      /* Type scale */
+      --f-xs:  10px;
+      --f-sm:  11px;
+      --f-base:13px;
+      --f-md:  14px;
+
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+      --ui:   'Inter', system-ui, sans-serif;
+
+      --sidebar: 250px;
+      --header:  50px;
+      --r:  8px;
+      --r2: 12px;
+    }
+
+    /* ── Reset ──────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; background: var(--void); }
+    body { color: var(--t1); font-family: var(--ui); font-size: var(--f-base); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    button { font-family: var(--ui); cursor: pointer; border: none; outline: none; }
+    pre, code { font-family: var(--mono); }
+    svg { display: block; }
+
+    /* ── App shell ──────────────────────────────────────────────── */
+    #app { display: flex; flex-direction: column; height: 100%; }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    .header {
+      height: var(--header);
+      display: flex; align-items: center; gap: 16px;
+      padding: 0 18px;
+      background: var(--base);
+      border-bottom: 1px solid var(--b1);
+      flex-shrink: 0;
+      position: relative; z-index: 20;
+    }
+
+    /* Wordmark */
+    .wordmark {
+      display: flex; align-items: center; gap: 8px;
+      flex-shrink: 0;
+    }
+    .wm-icon {
+      width: 52px; height: 52px;
+      flex-shrink: 0;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .wm-name {
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--t1);
+      letter-spacing: -0.02em;
+    }
+    .wm-name span { color: var(--violet); }
+    .wm-sep { width: 1px; height: 16px; background: var(--b2); margin: 0 2px; }
+    .wm-sub { font-size: var(--f-sm); color: var(--t3); font-weight: 500; }
+
+    /* Header stats */
+    .header-stats {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .stat-chip {
+      display: flex; align-items: center; gap: 5px;
+      padding: 3px 9px 3px 7px;
+      border-radius: 20px;
+      background: var(--s1);
+      border: 1px solid var(--b1);
+      font-size: var(--f-xs);
+      color: var(--t2);
+      white-space: nowrap;
+    }
+    .stat-chip svg { flex-shrink: 0; }
+    .stat-chip .n {
+      font-weight: 700;
+      font-size: 12px;
+      font-family: var(--mono);
+      color: var(--t1);
+      min-width: 12px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-chip.anomaly { border-color: var(--amber-lo); }
+    .stat-chip.anomaly .n { color: var(--amber); }
+    .stat-chip.mutation { border-color: var(--violet-lo); }
+    .stat-chip.mutation .n { color: var(--violet); }
+
+    .conn-pill {
+      display: flex; align-items: center; gap: 5px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      border: 1px solid var(--b1);
+      font-size: var(--f-xs);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+    .conn-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--t3);
+      transition: background 0.4s, box-shadow 0.4s;
+    }
+    .conn-pill.connected { border-color: oklch(68% 0.19 160 / 0.3); color: var(--emerald); }
+    .conn-pill.connected .conn-dot { background: var(--emerald); box-shadow: 0 0 6px var(--emerald); animation: pulse-dot 2.5s ease-in-out infinite; }
+    .conn-pill.error { color: var(--rose); border-color: var(--rose-lo); }
+    .conn-pill.error .conn-dot { background: var(--rose); }
+
+    /* ── Layout ─────────────────────────────────────────────────── */
+    .body { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+    /* ── Sidebar ─────────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar);
+      flex-shrink: 0;
+      border-right: 1px solid var(--b1);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      background: var(--base);
+    }
+    .sidebar-hd {
+      padding: 10px 14px 9px;
+      font-size: var(--f-xs);
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--t3);
+      border-bottom: 1px solid var(--b0);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .sessions-list {
+      flex: 1; overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: var(--s2) transparent;
+    }
+    .empty-sidebar {
+      padding: 40px 16px;
+      text-align: center;
+      color: var(--t3);
+      font-size: var(--f-sm);
+      line-height: 1.8;
+    }
+    .empty-sidebar svg { margin: 0 auto 14px; opacity: 0.25; stroke: var(--t2); }
+
+    /* Session row */
+    .si {
+      padding: 10px 14px 9px;
+      border-bottom: 1px solid var(--b0);
+      cursor: pointer;
+      transition: background 0.12s;
+      position: relative;
+      overflow: hidden;
+    }
+    .si::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 2px;
+      background: transparent;
+      transition: background 0.2s;
+    }
+    .si:hover { background: var(--s1); }
+    .si.active { background: var(--s1); }
+    .si.active::before { background: var(--violet); }
+    .si.anomaly::before { background: var(--amber); }
+
+    .si-r1 { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+    .si-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: var(--t3); }
+    .si-dot.live { background: var(--emerald); box-shadow: 0 0 5px var(--emerald); animation: pulse-dot 2s ease-in-out infinite; }
+    .si-dot.anomaly { background: var(--amber); box-shadow: 0 0 5px var(--amber); }
+    .si-id { font-family: var(--mono); font-size: var(--f-sm); font-weight: 600; color: var(--t1); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .si-live { font-size: var(--f-xs); font-weight: 700; letter-spacing: 0.06em; color: var(--emerald); background: var(--emerald-lo); border: 1px solid oklch(68% 0.19 160 / 0.25); border-radius: 3px; padding: 0 4px; }
+    .si-target { font-family: var(--mono); font-size: var(--f-xs); color: var(--t3); margin-bottom: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .si-pills { display: flex; gap: 4px; }
+    .si-pill {
+      display: flex; align-items: center; gap: 3px;
+      font-size: var(--f-xs); font-weight: 600;
+      padding: 1px 5px; border-radius: 3px;
+    }
+    .si-pill.a { color: var(--amber); background: var(--amber-lo); }
+    .si-pill.m { color: var(--violet); background: var(--violet-lo); }
+    .si-pill svg { width: 9px; height: 9px; }
+
+    /* ── Detail ─────────────────────────────────────────────────── */
+    .detail {
+      flex: 1; overflow-y: auto; padding: 20px 22px 32px;
+      scrollbar-width: thin; scrollbar-color: var(--s2) transparent;
+      background: var(--void);
+    }
+    .empty-detail {
+      height: 100%; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px; color: var(--t3);
+    }
+    .empty-detail svg { opacity: 0.18; stroke: var(--t2); }
+    .empty-detail h3 { font-size: 15px; font-weight: 600; color: var(--t2); }
+    .empty-detail p { font-size: var(--f-sm); }
+
+    /* ── Session hero ─────────────────────────────────────────────── */
+    .session-hero {
+      background: var(--s1);
+      border: 1px solid var(--b1);
+      border-radius: var(--r2);
+      padding: 16px 18px;
+      margin-bottom: 16px;
+      position: relative; overflow: hidden;
+    }
+    .session-hero::after {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 140px; height: 140px;
+      background: radial-gradient(circle, var(--violet-md) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .provider-logo {
+      width: 30px; height: 30px;
+      border-radius: 7px;
+      background: var(--s2);
+      border: 1px solid var(--b2);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .provider-logo img { width: 16px; height: 16px; object-fit: contain; }
+    .provider-logo.fallback {
+      font-family: var(--mono);
+      font-size: 12px; font-weight: 700;
+      color: var(--violet);
+    }
+
+    .hero-title { flex: 1; min-width: 0; }
+    .hero-host {
+      font-family: var(--mono);
+      font-size: 14px; font-weight: 600; color: var(--t1);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .hero-meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+    .hero-proto { font-size: var(--f-xs); color: var(--t3); font-family: var(--mono); }
+
+    .tls-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: var(--f-xs); font-weight: 700;
+      color: var(--emerald);
+      background: var(--emerald-lo);
+      border: 1px solid oklch(68% 0.19 160 / 0.2);
+      border-radius: 4px; padding: 1px 6px;
+    }
+    .tls-badge svg { width: 9px; height: 9px; stroke: var(--emerald); }
+
+    /* Bento stats */
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--b1);
+    }
+    .hero-stat {
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--r);
+      padding: 8px 10px;
+      transition: border-color 0.3s;
+    }
+    .hero-stat.has-anomaly { border-color: var(--amber-lo); }
+    .hero-stat.has-mutation { border-color: var(--violet-lo); }
+    .hero-stat .n {
+      font-family: var(--mono);
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 4px;
+      font-variant-numeric: tabular-nums;
+      color: var(--t2);
+      transition: color 0.3s;
+    }
+    .hero-stat.has-anomaly .n { color: var(--amber); }
+    .hero-stat.has-mutation .n { color: var(--violet); }
+    .hero-stat .label {
+      font-size: var(--f-xs);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--t3);
+    }
+
+    /* ── Section header ──────────────────────────────────────────── */
+    .section-hd {
+      display: flex; align-items: center; gap: 8px;
+      font-size: var(--f-xs); font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.10em;
+      color: var(--t3);
+      margin-bottom: 10px;
+    }
+    .section-hd::after { content: ''; flex: 1; height: 1px; background: var(--b1); }
+
+    /* ── Turn card ───────────────────────────────────────────────── */
+    .turn-card {
+      background: var(--s1);
+      border: 1px solid var(--b1);
+      border-radius: var(--r2);
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .turn-hd {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--b0);
+      cursor: pointer;
+    }
+    .turn-hd:hover { background: var(--s2); }
+    .turn-idx {
+      font-family: var(--mono); font-size: var(--f-xs);
+      color: var(--t3); background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: 4px; padding: 1px 5px;
+    }
+    .turn-method { font-family: var(--mono); font-size: var(--f-sm); font-weight: 600; color: var(--sky); }
+    .turn-path { font-family: var(--mono); font-size: var(--f-sm); color: var(--t2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .turn-sc {
+      font-family: var(--mono); font-size: var(--f-xs); font-weight: 700;
+      padding: 1px 6px; border-radius: 4px;
+    }
+    .turn-sc.ok { background: var(--emerald-lo); color: var(--emerald); }
+    .turn-sc.err { background: var(--rose-lo); color: var(--rose); }
+    .turn-dur { font-size: var(--f-xs); color: var(--t3); font-family: var(--mono); }
+    .turn-body { padding: 12px 14px; }
+
+    /* ── SVG Timeline ────────────────────────────────────────────── */
+    .tl-label {
+      font-size: var(--f-xs); font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.09em;
+      color: var(--t3); margin-bottom: 7px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .tl-wrap { overflow-x: auto; padding-bottom: 2px; }
+    .tl-wrap::-webkit-scrollbar { height: 3px; }
+    .tl-wrap::-webkit-scrollbar-thumb { background: var(--s2); border-radius: 2px; }
+    .tl-svg { cursor: pointer; }
+    .tl-bar { transition: opacity 0.15s; }
+    .tl-bar:hover { opacity: 0.8; }
+    .tl-cursor { animation: blink-bar 0.9s step-start infinite; }
+
+    /* ── Anomaly panel ───────────────────────────────────────────── */
+    .anomaly-panel {
+      margin-top: 12px;
+      border-radius: var(--r);
+      overflow: hidden;
+      border: 1px solid oklch(72% 0.20 68 / 0.25);
+      background: oklch(72% 0.20 68 / 0.04);
+    }
+    .anomaly-hd {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 12px;
+      background: oklch(72% 0.20 68 / 0.07);
+      border-bottom: 1px solid oklch(72% 0.20 68 / 0.18);
+    }
+    .anomaly-hd-title { font-size: var(--f-sm); font-weight: 700; color: var(--amber); }
+    .anomaly-hd svg { stroke: var(--amber); flex-shrink: 0; }
+    .anomaly-type {
+      margin-left: auto;
+      font-family: var(--mono); font-size: var(--f-xs);
+      color: var(--amber);
+      background: var(--amber-lo);
+      border: 1px solid oklch(72% 0.20 68 / 0.2);
+      border-radius: 4px; padding: 1px 7px;
+    }
+    .anomaly-body { padding: 12px; }
+
+    /* ── Diff view ───────────────────────────────────────────────── */
+    .diff { display: flex; flex-direction: column; gap: 3px; }
+
+    .diff-block { border-radius: var(--r); overflow: hidden; }
+    .diff-block-hd {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 10px;
+      font-size: var(--f-xs); font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      border-bottom: 1px solid var(--b0);
+    }
+    .diff-block-hd svg { width: 11px; height: 11px; flex-shrink: 0; }
+    .diff-block.recv .diff-block-hd { background: var(--rose-lo); color: var(--rose); border-color: oklch(62% 0.23 12 / 0.18); }
+    .diff-block.recv .diff-block-hd svg { stroke: var(--rose); }
+    .diff-block.patch .diff-block-hd { background: var(--emerald-lo); color: var(--emerald); border-color: oklch(68% 0.19 160 / 0.18); }
+    .diff-block.patch .diff-block-hd svg { stroke: var(--emerald); }
+
+    .diff-code {
+      padding: 8px 12px;
+      background: var(--s2);
+      font-family: var(--mono); font-size: 11.5px;
+      line-height: 1.6;
+      color: var(--t-code);
+      word-break: break-all; white-space: pre-wrap;
+      max-height: 90px; overflow-y: auto;
+    }
+    /* Character-level highlights */
+    .ch-add { background: oklch(68% 0.19 160 / 0.25); color: var(--emerald); border-radius: 2px; padding: 0 1px; }
+    .ch-del { background: oklch(62% 0.23 12 / 0.25); color: var(--rose); border-radius: 2px; padding: 0 1px; text-decoration: line-through; }
+
+    .diff-arrow {
+      text-align: center; font-size: var(--f-xs);
+      color: var(--t3); padding: 1px 0;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Mutation card ───────────────────────────────────────────── */
+    .mutation-card {
+      margin-top: 10px;
+      border-radius: var(--r);
+      overflow: hidden;
+      border: 1px solid oklch(65% 0.26 280 / 0.28);
+      background: oklch(65% 0.26 280 / 0.05);
+      /* Grain texture */
+      background-image:
+        oklch(65% 0.26 280 / 0.05),
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    }
+    .mutation-hd {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 12px;
+      background: oklch(65% 0.26 280 / 0.08);
+      border-bottom: 1px solid oklch(65% 0.26 280 / 0.18);
+    }
+    .mutation-hd-title { font-size: var(--f-sm); font-weight: 700; color: var(--violet); }
+    .mutation-hd svg { stroke: var(--violet); flex-shrink: 0; }
+    .mutation-id {
+      margin-left: auto;
+      font-family: var(--mono); font-size: var(--f-xs);
+      color: var(--t3);
+    }
+    .mutation-body { padding: 10px 12px; }
+    .mutation-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px; margin-bottom: 10px;
+    }
+    .mut-field .key {
+      font-size: var(--f-xs); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--t3); margin-bottom: 2px;
+    }
+    .mut-field .val { font-family: var(--mono); font-size: var(--f-sm); color: var(--t1); }
+
+    /* Confidence bar */
+    .conf-wrap { display: flex; align-items: center; gap: 6px; }
+    .conf-track { flex: 1; height: 3px; background: var(--b2); border-radius: 2px; overflow: hidden; }
+    .conf-fill { height: 100%; background: var(--violet); border-radius: 2px; transform-origin: left; }
+    .conf-val { font-family: var(--mono); font-size: var(--f-xs); color: var(--violet); }
+
+    /* Patch transform row */
+    .patch-row {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--r);
+      padding: 7px 10px;
+      font-family: var(--mono); font-size: 11.5px;
+    }
+    .patch-from { color: var(--rose); flex: 1; word-break: break-all; }
+    .patch-arrow { color: var(--t3); flex-shrink: 0; }
+    .patch-to { color: var(--emerald); flex: 1; word-break: break-all; }
+    .patch-label {
+      font-size: var(--f-xs); font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 5px;
+    }
+
+    /* ── Replay ──────────────────────────────────────────────────── */
+    .replay-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px;
+      border-radius: var(--r);
+      background: var(--violet-lo);
+      border: 1px solid oklch(65% 0.26 280 / 0.3);
+      color: var(--violet);
+      font-size: var(--f-sm); font-weight: 600;
+      transition: background 0.15s, box-shadow 0.15s;
+      margin-top: 12px; cursor: pointer;
+      position: relative; overflow: hidden;
+    }
+    .replay-btn:hover {
+      background: var(--violet-md);
+      box-shadow: 0 0 16px var(--violet-glow);
+    }
+    .replay-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .replay-btn svg { width: 13px; height: 13px; stroke: var(--violet); }
+
+    /* Ripple */
+    .ripple {
+      position: absolute; border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      transform: scale(0);
+      animation: ripple 0.5s ease-out forwards;
+      pointer-events: none;
+    }
+    @keyframes ripple { to { transform: scale(4); opacity: 0; } }
+
+    .replay-result {
+      margin-top: 10px;
+      border: 1px solid var(--b2);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+    .replay-result-hd {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--b1);
+      font-size: var(--f-sm); font-weight: 600;
+    }
+    .replay-result-hd svg { flex-shrink: 0; }
+    .replay-result-hd.ok { color: var(--emerald); }
+    .replay-result-hd.ok svg { stroke: var(--emerald); }
+    .replay-result-hd.warn { color: var(--amber); }
+    .replay-result-hd.warn svg { stroke: var(--amber); }
+    .replay-row { padding: 7px 12px; border-bottom: 1px solid var(--b0); font-size: var(--f-sm); font-family: var(--mono); color: var(--t2); }
+    .replay-row:last-child { border-bottom: none; }
+    .replay-ok { color: var(--emerald); }
+    .replay-bad { color: var(--amber); }
+
+    /* ── Animations ──────────────────────────────────────────────── */
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.35; }
+    }
+    @keyframes blink-bar {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    /* ── Spinner ─────────────────────────────────────────────────── */
+    .spin {
+      display: inline-block;
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      border-top-color: currentColor;
+      animation: spin 0.65s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Scrollbars ──────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--s2); border-radius: 2px; }
+  </style>
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+</head>
+<body>
+<div id="app">
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="wordmark">
+      <div class="wm-icon">
+        <img src="/static/okto_nav.jpg" alt="Okto" width="52" height="52" style="display:block;border-radius:10px;object-fit:cover">
+      </div>
+      <span class="wm-name"><span>Okto</span></span>
+      <div class="wm-sep"></div>
+      <span class="wm-sub">Traffic Inspector</span>
+    </div>
+
+    <div class="header-stats">
+      <div class="stat-chip">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="n" id="stat-sessions">0</span>
+        <span>sessions</span>
+      </div>
+      <div class="stat-chip anomaly">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <span class="n" id="stat-anomalies">0</span>
+        <span>anomalies</span>
+      </div>
+      <div class="stat-chip mutation">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 15c6.667-6 13.333 0 20-6"/><path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993"/><path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993"/><path d="m17 6-2.5-2.5"/><path d="m7 18 2.5 2.5"/><path d="m6.5 12.5 1 1"/><path d="m16.5 10.5 1 1"/></svg>
+        <span class="n" id="stat-mutations">0</span>
+        <span>mutations</span>
+      </div>
+      <div class="conn-pill" id="conn-pill">
+        <div class="conn-dot" id="conn-dot"></div>
+        <span id="conn-label">connecting</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Body ── -->
+  <div class="body">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-hd">
+        <span>Sessions</span>
+        <span id="sidebar-count" style="font-weight:400;font-size:10px;color:var(--t3)"></span>
+      </div>
+      <div class="sessions-list" id="sessions-list">
+        <div class="empty-sidebar">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m10.065 12.493-6.18 1.318a.934.934 0 0 1-1.108-.702l-.537-2.15a1.07 1.07 0 0 1 .691-1.265l13.504-4.44"/><path d="m13.56 11.747 4.332-.924"/><path d="m16 21-3.105-6.21"/><path d="M16.485 5.94a2 2 0 0 1 1.455-2.425l1.09-.272a1 1 0 0 1 1.212.727l1.515 6.06a1 1 0 0 1-.727 1.213l-1.09.272a2 2 0 0 1-2.425-1.455z"/><path d="m6.158 8.633 1.114 4.456"/><path d="m8 21 3.105-6.21"/><circle cx="12" cy="21" r="1"/>
+          </svg>
+          Waiting for proxy traffic<br>
+          <span style="font-size:9px;opacity:0.6">Run an agent through the proxy</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Detail -->
+    <main class="detail" id="detail">
+      <div class="empty-detail" id="empty-detail">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m10.065 12.493-6.18 1.318a.934.934 0 0 1-1.108-.702l-.537-2.15a1.07 1.07 0 0 1 .691-1.265l13.504-4.44"/><path d="m13.56 11.747 4.332-.924"/><path d="m16 21-3.105-6.21"/><path d="M16.485 5.94a2 2 0 0 1 1.455-2.425l1.09-.272a1 1 0 0 1 1.212.727l1.515 6.06a1 1 0 0 1-.727 1.213l-1.09.272a2 2 0 0 1-2.425-1.455z"/><path d="m6.158 8.633 1.114 4.456"/><path d="m8 21 3.105-6.21"/><circle cx="12" cy="21" r="1"/>
+        </svg>
+        <h3>No session selected</h3>
+        <p>Sessions appear as agents run through the proxy</p>
+      </div>
+      <div id="session-view" style="display:none"></div>
+    </main>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ── Simple Icons provider map ──────────────────────────────────── */
+const PROVIDER_ICONS = {
+  'anthropic':  'https://cdn.simpleicons.org/anthropic/818cf8',
+  'openai':     'https://cdn.simpleicons.org/openai/818cf8',
+  'google':     'https://cdn.simpleicons.org/google/818cf8',
+  'cursor':     'https://cdn.simpleicons.org/cursor/818cf8',
+  'moonshot ai':'https://cdn.simpleicons.org/moonshot/818cf8',
+};
+function providerIcon(vendor) {
+  return PROVIDER_ICONS[vendor?.toLowerCase()] || null;
+}
+
+/* ── Inline SVG icons ──────────────────────────────────────────── */
+const IC = {
+  alert:  `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`,
+  dna:    `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 15c6.667-6 13.333 0 20-6"/><path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993"/><path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993"/><path d="m17 6-2.5-2.5"/><path d="m7 18 2.5 2.5"/><path d="m6.5 12.5 1 1"/><path d="m16.5 10.5 1 1"/></svg>`,
+  play:   `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>`,
+  check:  `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`,
+  shield: `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+  x:      `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
+};
+
+/* ── State ─────────────────────────────────────────────────────── */
+const state = {
+  sessions: new Map(),
+  activeSid: null,
+};
+
+/* ── Stat counter animation ─────────────────────────────────────── */
+function animCounter(el, to) {
+  const from = parseInt(el.textContent || '0', 10);
+  if (from === to) return;
+  anime({ targets: { v: from }, v: to, round: 1, duration: 550,
+    easing: 'easeOutExpo', update: a => el.textContent = Math.round(a.animations[0].currentValue) });
+}
+function updateStats() {
+  let sessions = 0, anomalies = 0, mutations = 0;
+  state.sessions.forEach(s => {
+    sessions++;
+    anomalies += (s.anomaly_count || 0);
+    mutations += (s.mutation_count || 0);
+  });
+  animCounter(document.getElementById('stat-sessions'), sessions);
+  animCounter(document.getElementById('stat-anomalies'), anomalies);
+  animCounter(document.getElementById('stat-mutations'), mutations);
+  const el = document.getElementById('sidebar-count');
+  if (el) el.textContent = sessions > 0 ? `${sessions}` : '';
+}
+
+/* ── WebSocket ──────────────────────────────────────────────────── */
+let ws = null;
+let wsDelay = 1000;
+
+function connect() {
+  ws = new WebSocket(`ws://${location.host}/ws/live`);
+  ws.onopen = () => { setConn('connected'); wsDelay = 1000; loadSessions(); };
+  ws.onmessage = e => { try { dispatch(JSON.parse(e.data)); } catch(_) {} };
+  ws.onerror = () => setConn('error');
+  ws.onclose = () => { setConn('disconnected'); setTimeout(connect, wsDelay = Math.min(wsDelay * 1.5, 10000)); };
+}
+
+function setConn(s) {
+  const pill = document.getElementById('conn-pill');
+  const dot  = document.getElementById('conn-dot');
+  const lbl  = document.getElementById('conn-label');
+  pill.className = `conn-pill ${s === 'connected' ? 'connected' : s === 'error' ? 'error' : ''}`;
+  lbl.textContent = s;
+}
+
+async function loadSessions() {
+  try {
+    const r = await fetch('/api/sessions');
+    const list = await r.json();
+    list.forEach(s => {
+      if (!state.sessions.has(s.id)) {
+        state.sessions.set(s.id, { ...s, turns: [], status: 'complete' });
+        addSidebarItem(s.id, false);
+      }
+    });
+    updateStats();
+  } catch(_) {}
+}
+
+/* ── Event dispatcher ──────────────────────────────────────────── */
+function dispatch(ev) {
+  switch(ev.type) {
+    case 'session_start':    onStart(ev);    break;
+    case 'turn_complete':    onTurn(ev);     break;
+    case 'anomaly_detected': onAnomaly(ev);  break;
+    case 'mutation_derived': onMutation(ev); break;
+    case 'session_end':      onEnd(ev);      break;
+  }
+}
+
+function onStart(ev) {
+  const p = ev.payload;
+  state.sessions.set(ev.session_id, {
+    id: ev.session_id, status: 'live',
+    connect_target: p.connect_target, tls_established: p.tls_established,
+    provider: p.provider, client: p.client,
+    turns: [], anomaly_count: 0, mutation_count: 0,
+    started_at_ms: ev.ts_ms,
+  });
+  addSidebarItem(ev.session_id, true);
+  updateStats();
+}
+
+function onTurn(ev) {
+  const s = state.sessions.get(ev.session_id);
+  if (!s) return;
+  const p = ev.payload;
+  let t = s.turns.find(t => t.index === p.turn_index);
+  if (!t) {
+    t = { index: p.turn_index, method: p.method, path: p.path, status: p.status_code,
+          duration_ms: p.duration_ms, stream_chunks: [], anomaly_panels: [], mutation_cards: [] };
+    s.turns.push(t);
+  } else {
+    Object.assign(t, { status: p.status_code, duration_ms: p.duration_ms });
+  }
+  (p.chunks || []).forEach(c => {
+    if (!t.stream_chunks.find(x => x.index === c.index)) t.stream_chunks.push(c);
+  });
+  updateSidebar(ev.session_id);
+  if (state.activeSid === ev.session_id) renderDetail(ev.session_id);
+}
+
+function onAnomaly(ev) {
+  const s = state.sessions.get(ev.session_id);
+  if (!s) return;
+  const p = ev.payload;
+  let t = s.turns.find(t => t.index === p.turn_index);
+  if (!t) {
+    t = { index: p.turn_index, method: 'POST', path: '/v1/messages', status: 200,
+          duration_ms: 0, stream_chunks: [], anomaly_panels: [], mutation_cards: [] };
+    s.turns.push(t);
+  }
+  const c = { index: p.chunk_index, raw_hex: p.raw_hex, anomalous: true,
+               anomaly_type: p.anomaly_type, expected_hex: p.expected_hex };
+  if (!t.stream_chunks.find(x => x.index === p.chunk_index)) t.stream_chunks.push(c);
+  t.anomaly_panels = t.anomaly_panels || [];
+  if (!t.anomaly_panels.find(a => a.chunk_index === p.chunk_index)) {
+    t.anomaly_panels.push({ chunk_index: p.chunk_index, anomaly_type: p.anomaly_type,
+                             raw_hex: p.raw_hex, expected_hex: p.expected_hex });
+  }
+  s.anomaly_count = (s.anomaly_count || 0) + 1;
+  updateSidebar(ev.session_id);
+  if (state.activeSid === ev.session_id) renderDetail(ev.session_id);
+  updateStats();
+}
+
+function onMutation(ev) {
+  const s = state.sessions.get(ev.session_id);
+  if (!s) return;
+  const p = ev.payload;
+  s.mutation_count = (s.mutation_count || 0) + 1;
+  const t = s.turns.find(t => t.index === (p.turn_index || 0));
+  if (t) { t.mutation_cards = t.mutation_cards || []; t.mutation_cards.push(p.mutation); }
+  updateSidebar(ev.session_id);
+  if (state.activeSid === ev.session_id) renderDetail(ev.session_id);
+  updateStats();
+}
+
+function onEnd(ev) {
+  const s = state.sessions.get(ev.session_id);
+  if (s) { s.status = s.anomaly_count > 0 ? 'anomaly' : 'complete'; updateSidebar(ev.session_id); }
+}
+
+/* ── Sidebar ────────────────────────────────────────────────────── */
+function addSidebarItem(sid, animate) {
+  const list = document.getElementById('sessions-list');
+  const empty = list.querySelector('.empty-sidebar');
+  if (empty) empty.remove();
+
+  let el = document.getElementById(`si-${sid}`);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = `si-${sid}`;
+    el.className = 'si';
+    el.onclick = () => selectSession(sid);
+    list.insertBefore(el, list.firstChild);
+
+    if (animate) {
+      anime({ targets: el, translateX: [-18, 0], opacity: [0, 1],
+              duration: 320, easing: 'easeOutQuart' });
+    }
+  }
+  updateSidebar(sid);
+}
+
+function updateSidebar(sid) {
+  const s = state.sessions.get(sid);
+  const el = document.getElementById(`si-${sid}`);
+  if (!s || !el) return;
+
+  const dotCls = s.status === 'live' ? 'live' : s.anomaly_count > 0 ? 'anomaly' : '';
+  el.className = `si${state.activeSid === sid ? ' active' : ''}${s.anomaly_count > 0 ? ' anomaly' : ''}`;
+
+  el.innerHTML = `
+    <div class="si-r1">
+      <div class="si-dot ${dotCls}"></div>
+      <span class="si-id">${sid.slice(0, 8)}</span>
+      ${s.status === 'live' ? '<span class="si-live">LIVE</span>' : ''}
+    </div>
+    <div class="si-target">${esc(s.connect_target || s.client || '—')}</div>
+    <div class="si-pills">
+      ${s.anomaly_count > 0 ? `<div class="si-pill a">${IC.alert} ${s.anomaly_count}</div>` : ''}
+      ${s.mutation_count > 0 ? `<div class="si-pill m">${IC.dna} ${s.mutation_count}</div>` : ''}
+    </div>
+  `;
+}
+
+/* ── Select session ─────────────────────────────────────────────── */
+function selectSession(sid) {
+  if (state.activeSid) {
+    const old = document.getElementById(`si-${state.activeSid}`);
+    if (old) old.classList.remove('active');
+  }
+  state.activeSid = sid;
+  const el = document.getElementById(`si-${sid}`);
+  if (el) el.classList.add('active');
+  renderDetail(sid);
+  fetchDetail(sid);
+}
+
+async function fetchDetail(sid) {
+  try {
+    const r = await fetch(`/api/sessions/${sid}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    const s = state.sessions.get(sid);
+    if (!s) return;
+    s.connect_target  = s.connect_target  || data.connect_target;
+    s.tls_established = s.tls_established || data.tls_established;
+    s.provider        = s.provider        || data.provider;
+    (data.turns || []).forEach(dt => {
+      let t = s.turns.find(x => x.index === dt.index);
+      if (!t) {
+        t = { ...dt, anomaly_panels: [], mutation_cards: [] };
+        s.turns.push(t);
+      } else {
+        (dt.stream_chunks || []).forEach(c => {
+          if (!t.stream_chunks.find(x => x.index === c.index)) {
+            t.stream_chunks.push(c);
+            if (c.anomalous && c.anomaly_type && !t.anomaly_panels.find(a => a.chunk_index === c.index)) {
+              t.anomaly_panels.push({ chunk_index: c.index, anomaly_type: c.anomaly_type,
+                                       raw_hex: c.raw_hex, expected_hex: c.expected_hex });
+            }
+          }
+        });
+      }
+    });
+    s.turns.sort((a, b) => a.index - b.index);
+    if (state.activeSid === sid) renderDetail(sid);
+  } catch(_) {}
+}
+
+/* ── Detail render ──────────────────────────────────────────────── */
+function renderDetail(sid) {
+  const s = state.sessions.get(sid);
+  if (!s) return;
+
+  document.getElementById('empty-detail').style.display = 'none';
+  const view = document.getElementById('session-view');
+  view.style.display = 'block';
+
+  const p = s.provider;
+  const iconSrc = p ? providerIcon(p.vendor) : null;
+  const providerName = p ? `${p.vendor} · ${p.product}` : (s.client || '—');
+  const totalChunks = s.turns.reduce((n, t) => n + t.stream_chunks.length, 0);
+
+  view.innerHTML = `
+    <div class="session-hero">
+      <div class="hero-top">
+        <div class="provider-logo ${iconSrc ? '' : 'fallback'}">
+          ${iconSrc
+            ? `<img src="${iconSrc}" alt="${esc(p.vendor)}" width="16" height="16">`
+            : `<span>${(s.client || '?')[0].toUpperCase()}</span>`}
+        </div>
+        <div class="hero-title">
+          <div class="hero-host">${esc(s.connect_target || s.client || '—')}</div>
+          <div class="hero-meta">
+            <span class="hero-proto">${esc(providerName)}</span>
+            ${s.tls_established ? `<div class="tls-badge">${IC.shield} TLS</div>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="n" id="hs-turns-${sid}">${s.turns.length}</div>
+          <div class="label">Turns</div>
+        </div>
+        <div class="hero-stat">
+          <div class="n" id="hs-chunks-${sid}">${totalChunks}</div>
+          <div class="label">Chunks</div>
+        </div>
+        <div class="hero-stat ${s.anomaly_count > 0 ? 'has-anomaly' : ''}">
+          <div class="n" id="hs-anomalies-${sid}">${s.anomaly_count || 0}</div>
+          <div class="label">Anomalies</div>
+        </div>
+        <div class="hero-stat ${s.mutation_count > 0 ? 'has-mutation' : ''}">
+          <div class="n" id="hs-mutations-${sid}">${s.mutation_count || 0}</div>
+          <div class="label">Mutations</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-hd">Request turns</div>
+
+    ${s.turns.length === 0
+      ? `<div style="color:var(--t3);font-size:12px;padding:8px 0">No turns captured yet</div>`
+      : s.turns.map(t => renderTurn(sid, t)).join('')
+    }
+  `;
+
+  // Animate stat numbers
+  ['turns','chunks','anomalies','mutations'].forEach((k, i) => {
+    const el = document.getElementById(`hs-${k}-${sid}`);
+    if (el) anime({ targets: el, opacity: [0.2, 1], translateY: [8, 0],
+                    duration: 400, easing: 'easeOutQuart', delay: i * 40 });
+  });
+
+  // Init timelines + animate mutation cards after DOM paints
+  requestAnimationFrame(() => afterRender(sid));
+}
+
+/* ── Turn ────────────────────────────────────────────────────────── */
+function renderTurn(sid, turn) {
+  const chunks  = turn.stream_chunks || [];
+  const anomalies = turn.anomaly_panels || [];
+  const mutations = turn.mutation_cards || [];
+  const scCls = (turn.status >= 200 && turn.status < 300) ? 'ok' : 'err';
+  const dur   = turn.duration_ms ? `${Math.round(turn.duration_ms)}ms` : '';
+
+  const timelineId = `tl-${sid}-${turn.index}`;
+  const hasAnomaly = chunks.some(c => c.anomalous);
+
+  return `
+    <div class="turn-card" id="tc-${sid}-${turn.index}">
+      <div class="turn-hd">
+        <span class="turn-idx">T${turn.index}</span>
+        <span class="turn-method">${esc(turn.method || 'POST')}</span>
+        <span class="turn-path">${esc(turn.path || '/v1/messages')}</span>
+        <span class="turn-sc ${scCls}">${turn.status || '—'}</span>
+        ${dur ? `<span class="turn-dur">${dur}</span>` : ''}
+      </div>
+      <div class="turn-body">
+        <div class="tl-label">
+          <span>Chunk stream</span>
+          <span style="color:var(--t3);font-weight:400">${chunks.length} chunks</span>
+        </div>
+        <div class="tl-wrap">
+          <svg id="${timelineId}" class="tl-svg" style="display:block"></svg>
+        </div>
+        ${anomalies.map(a => renderAnomalyPanel(sid, turn.index, a, mutations)).join('')}
+        ${hasAnomaly ? `
+          <button class="replay-btn" id="rb-${sid}-${turn.index}"
+            onclick="replayTurn(event,'${sid}','${turn.index}')">
+            ${IC.play} Replay with genome
+          </button>
+          <div id="rr-${sid}-${turn.index}"></div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+/* ── SVG waveform timeline ──────────────────────────────────────── */
+function initTimeline(sid, turnIdx, chunks) {
+  const id  = `tl-${sid}-${turnIdx}`;
+  const svg = document.getElementById(id);
+  if (!svg || chunks.length === 0) {
+    if (svg) {
+      // Blinking cursor for in-progress turn
+      svg.setAttribute('viewBox', '0 0 20 36');
+      svg.setAttribute('width', '20'); svg.setAttribute('height', '36');
+      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      r.setAttribute('x','0'); r.setAttribute('y','4'); r.setAttribute('width','3'); r.setAttribute('height','28');
+      r.setAttribute('rx','1.5'); r.setAttribute('fill','var(--sky)'); r.classList.add('tl-cursor');
+      svg.appendChild(r);
+    }
+    return;
+  }
+
+  const BAR = 7, GAP = 3, MAX_H = 32, MIN_H = 10;
+  const W = chunks.length * (BAR + GAP) - GAP;
+  svg.setAttribute('viewBox', `0 0 ${W} ${MAX_H + 2}`);
+  svg.setAttribute('width', W); svg.setAttribute('height', MAX_H + 2);
+
+  const bars = [];
+  chunks.forEach((c, i) => {
+    const h = c.anomalous ? MAX_H
+      : MIN_H + Math.abs(Math.sin(i * 2.399 + 0.5)) * (MAX_H - MIN_H - 8);
+    const fill = c.anomalous
+      ? 'var(--amber)'
+      : c.applied_mutation_id ? 'var(--violet)' : '#1a2540';
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', i * (BAR + GAP));
+    rect.setAttribute('y', MAX_H - h);
+    rect.setAttribute('width', BAR);
+    rect.setAttribute('height', h);
+    rect.setAttribute('rx', '2');
+    rect.setAttribute('fill', fill);
+    rect.classList.add('tl-bar');
+    rect.dataset.chunk = c.index;
+    rect.style.transformOrigin = `${i * (BAR + GAP) + BAR/2}px ${MAX_H}px`;
+    rect.style.transform = 'scaleY(0)';
+    rect.onclick = () => highlightBar(sid, turnIdx, c.index);
+    if (c.anomalous) {
+      const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      title.textContent = `chunk ${c.index} — ${c.anomaly_type || 'anomaly'}`;
+      rect.appendChild(title);
+    }
+    svg.appendChild(rect);
+    bars.push(rect);
+  });
+
+  // anime.js staggered entrance
+  anime({
+    targets: bars,
+    scaleY: [0, 1],
+    opacity: [0, 1],
+    delay: anime.stagger(28, { from: 0 }),
+    duration: 500,
+    easing: 'easeOutElastic(1, 0.7)',
+  });
+
+  // Amber glow on anomalous bars
+  const anomBars = bars.filter((_, i) => chunks[i].anomalous);
+  if (anomBars.length > 0) {
+    anime({
+      targets: anomBars,
+      opacity: [1, 0.65, 1],
+      loop: true,
+      direction: 'alternate',
+      duration: 1400,
+      easing: 'easeInOutSine',
+    });
+  }
+}
+
+function highlightBar(sid, turnIdx, chunkIdx) {
+  const id = `tl-${sid}-${turnIdx}`;
+  const svg = document.getElementById(id);
+  if (!svg) return;
+  svg.querySelectorAll('.tl-bar').forEach(b => {
+    const isTarget = b.dataset.chunk === String(chunkIdx);
+    anime({ targets: b, opacity: isTarget ? [0.6, 1] : [1, 0.3],
+            duration: 200, easing: 'linear' });
+  });
+}
+
+/* ── Anomaly panel ──────────────────────────────────────────────── */
+function renderAnomalyPanel(sid, turnIdx, a, mutations) {
+  const rawStr = hexToUtf8(a.raw_hex);
+  const expStr = a.expected_hex ? hexToUtf8(a.expected_hex) : null;
+
+  // Character-level diff
+  let recvHtml, patchHtml;
+  if (expStr) {
+    const d = charDiff(rawStr, expStr);
+    recvHtml = `<span class="diff-unchanged">${esc(d.prefix)}</span>`
+             + (d.removed ? `<span class="ch-del">${esc(d.removed)}</span>` : '')
+             + `<span class="diff-unchanged">${esc(d.suffix)}</span>`;
+    patchHtml = `<span class="diff-unchanged">${esc(d.prefix)}</span>`
+              + (d.added ? `<span class="ch-add">${esc(d.added)}</span>` : '')
+              + `<span class="diff-unchanged">${esc(d.suffix)}</span>`;
+  } else {
+    recvHtml  = esc(rawStr);
+    patchHtml = null;
+  }
+
+  const mut = (mutations || [])[0];
+
+  return `
+    <div class="anomaly-panel" id="ap-${sid}-${turnIdx}">
+      <div class="anomaly-hd">
+        ${IC.alert}
+        <span class="anomaly-hd-title">Anomaly detected</span>
+        <span class="anomaly-type">${esc(a.anomaly_type || 'protocol_anomaly')}</span>
+      </div>
+      <div class="anomaly-body">
+        <div class="diff">
+          <div class="diff-block recv">
+            <div class="diff-block-hd">${IC.x} Received · chunk ${a.chunk_index}</div>
+            <pre class="diff-code">${recvHtml}</pre>
+          </div>
+          ${patchHtml ? `
+          <div class="diff-arrow">↓ mutation applied</div>
+          <div class="diff-block patch">
+            <div class="diff-block-hd">${IC.check} Patched</div>
+            <pre class="diff-code">${patchHtml}</pre>
+          </div>` : ''}
+        </div>
+        ${mut ? renderMutCard(mut) : ''}
+      </div>
+    </div>
+  `;
+}
+
+/* ── Mutation card ──────────────────────────────────────────────── */
+function renderMutCard(mut) {
+  const patStr = mut.pattern_hex ? truncate(hexToUtf8(mut.pattern_hex), 36) : '—';
+  const patStr2= mut.patch_hex   ? truncate(hexToUtf8(mut.patch_hex), 36)   : '—';
+  const conf   = (mut.confidence || 0);
+  const confPct= Math.round(conf * 100);
+  const shortId= (mut.id || '').slice(0, 8);
+
+  return `
+    <div class="mutation-card" id="mc-${shortId}">
+      <div class="mutation-hd">
+        ${IC.dna}
+        <span class="mutation-hd-title">Mutation derived</span>
+        <span class="mutation-id">mut_${shortId}</span>
+      </div>
+      <div class="mutation-body">
+        <div class="mutation-grid">
+          <div class="mut-field">
+            <div class="key">Scope</div>
+            <div class="val">${esc(mut.scope || '—')}</div>
+          </div>
+          <div class="mut-field">
+            <div class="key">Client</div>
+            <div class="val">${esc(mut.client || '—')}</div>
+          </div>
+          <div class="mut-field">
+            <div class="key">Confidence</div>
+            <div class="conf-wrap">
+              <div class="conf-track"><div class="conf-fill" id="cf-${shortId}" style="width:0%"></div></div>
+              <span class="conf-val">${conf.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+        <div class="patch-label" style="color:var(--t3)">Transform</div>
+        <div class="patch-row">
+          <span class="patch-from">${esc(patStr) || '<empty>'}</span>
+          <span class="patch-arrow">→</span>
+          <span class="patch-to">${esc(patStr2) || '<empty>'}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* Animate confidence bar and mutation card entrance after render */
+function animateMutCard(shortId, confPct) {
+  // Confidence bar fill
+  const fill = document.getElementById(`cf-${shortId}`);
+  if (fill) anime({ targets: fill, width: `${confPct}%`, duration: 700, easing: 'easeOutExpo', delay: 100 });
+
+  // Card glow
+  const card = document.getElementById(`mc-${shortId}`);
+  if (card) {
+    anime({ targets: card, boxShadow: [
+      '0 0 0px 0px oklch(65% 0.26 280 / 0)',
+      '0 0 24px 4px oklch(65% 0.26 280 / 0.3)',
+      '0 0 0px 0px oklch(65% 0.26 280 / 0)',
+    ], duration: 1400, easing: 'easeInOutSine' });
+  }
+}
+
+/* ── Post-render hooks ──────────────────────────────────────────── */
+// Called after innerHTML updates settle
+function afterRender(sid) {
+  const s = state.sessions.get(sid);
+  if (!s) return;
+  // Init timelines
+  s.turns.forEach(t => initTimeline(sid, t.index, t.stream_chunks || []));
+  // Animate mutation cards
+  s.turns.forEach(t => {
+    (t.mutation_cards || []).forEach(m => {
+      const shortId = (m.id || '').slice(0, 8);
+      animateMutCard(shortId, Math.round((m.confidence || 0) * 100));
+    });
+  });
+}
+
+
+/* ── Replay ─────────────────────────────────────────────────────── */
+async function replayTurn(e, sid, turnIdx) {
+  const btn = document.getElementById(`rb-${sid}-${turnIdx}`);
+  const out = document.getElementById(`rr-${sid}-${turnIdx}`);
+
+  // Ripple
+  const r = document.createElement('span');
+  r.className = 'ripple';
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  r.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - rect.left - size/2}px;top:${e.clientY - rect.top - size/2}px`;
+  btn.appendChild(r);
+  setTimeout(() => r.remove(), 600);
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spin"></span> Running…`;
+
+  try {
+    const res = await fetch(`/api/sessions/${sid}/replay`, { method: 'POST' });
+    if (!res.ok) return;
+    const result = await res.json();
+
+    const tr = result.turn_results.find(t => t.turn_index === parseInt(turnIdx, 10))
+               || result.turn_results[0];
+    if (!tr) return;
+
+    const cls  = tr.resolved ? 'ok'   : 'warn';
+    const icon = tr.resolved ? IC.check : IC.alert;
+    const msg  = tr.resolved
+      ? `${tr.anomalies_detected} anomal${tr.anomalies_detected !== 1 ? 'ies' : 'y'} — all resolved`
+      : `${tr.anomalies_detected} anomal${tr.anomalies_detected !== 1 ? 'ies' : 'y'}, ${tr.mutations_applied} resolved`;
+
+    const rowsHtml = tr.chunks.filter(c => c.anomalous).map(c => `
+      <div class="replay-row">
+        <span class="${c.resolved ? 'replay-ok' : 'replay-bad'}">${c.resolved ? '✓' : '✗'}</span>
+        &nbsp;<code>${esc(c.anomaly_type || 'anomaly')}</code>
+        &nbsp;—&nbsp;
+        ${c.resolved
+          ? `<span class="replay-ok">patched · mut_${(c.mutation_id||'').slice(0,8)}</span>`
+          : `<span class="replay-bad">unresolved</span>`}
+      </div>
+    `).join('') || `<div class="replay-row" style="color:var(--t3)">No anomalous chunks</div>`;
+
+    out.innerHTML = `
+      <div class="replay-result">
+        <div class="replay-result-hd ${cls}">${icon} ${msg}</div>
+        ${rowsHtml}
+      </div>
+    `;
+
+    anime({ targets: out.firstChild, translateY: [-6, 0], opacity: [0, 1],
+            duration: 320, easing: 'easeOutQuart' });
+  } catch (err) {
+    out.innerHTML = `<div style="color:var(--rose);font-size:11px;margin-top:8px">Replay failed: ${esc(String(err))}</div>`;
+  } finally {
+    btn.innerHTML = `${IC.play} Replay with genome`;
+    btn.disabled = false;
+  }
+}
+
+/* ── Char diff ───────────────────────────────────────────────────── */
+function charDiff(from, to) {
+  let ps = 0;
+  while (ps < from.length && ps < to.length && from[ps] === to[ps]) ps++;
+  let suf = 0;
+  while (suf < from.length - ps && suf < to.length - ps
+         && from[from.length - 1 - suf] === to[to.length - 1 - suf]) suf++;
+  return {
+    prefix:  from.slice(0, ps),
+    removed: from.slice(ps, from.length - (suf || 0)),
+    added:   to.slice(ps, to.length - (suf || 0)),
+    suffix:  suf > 0 ? from.slice(from.length - suf) : '',
+  };
+}
+
+/* ── Utilities ───────────────────────────────────────────────────── */
+function esc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function hexToUtf8(hex) {
+  if (!hex) return '';
+  try {
+    return new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g).map(b => parseInt(b,16))));
+  } catch { return hex; }
+}
+function truncate(s, n) { return s && s.length > n ? s.slice(0, n) + '…' : (s || ''); }
+
+/* ── Boot ────────────────────────────────────────────────────────── */
+connect();
+</script>
+</body>
+</html>

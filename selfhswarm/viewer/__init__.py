@@ -1,0 +1,1 @@
+"""selfhswarm.viewer package."""
