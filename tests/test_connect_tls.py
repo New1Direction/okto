@@ -16,9 +16,9 @@ No external network calls are made.
 from __future__ import annotations
 
 import asyncio
+import pathlib
 import ssl
 import tempfile
-import pathlib
 
 import pytest
 
@@ -26,14 +26,13 @@ from selfhswarm.hlc import HLCClock
 from selfhswarm.models import AgentClient
 from selfhswarm.proxy.addon import (
     SelfHSwarmProxy,
-    _read_headers,
     _content_length,
     _is_streaming_response,
+    _read_headers,
     _try_parse_json,
 )
 from selfhswarm.proxy.tls import CertAuthority
 from selfhswarm.rna_bus.ledger import GenomeLedger
-
 
 # ---------------------------------------------------------------------------
 # Helpers shared across tests
@@ -182,7 +181,10 @@ class TestTLSMITM:
         # The upstream uses a real cert from our test CA
         upstream_ctx = ca.server_context("127.0.0.1")
 
-        body_to_send = b"data: {\"type\":\"content_block_delta\",\"delta\":{\"text\":\"hello\"}}\n\n"
+        body_to_send = (
+            b"data: {\"type\":\"content_block_delta\","
+            b"\"delta\":{\"text\":\"hello\"}}\n\n"
+        )
 
         async def echo_handler(r: asyncio.StreamReader, w: asyncio.StreamWriter):
             """Minimal HTTPS server: read any request, return SSE body."""

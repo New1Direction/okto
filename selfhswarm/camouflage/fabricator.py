@@ -30,7 +30,6 @@ from selfhswarm.models import (
     Turn,
 )
 
-
 # ---------------------------------------------------------------------------
 # Scenario implementations
 # ---------------------------------------------------------------------------
@@ -132,12 +131,13 @@ def _scenario_reflection_loop(turn: Turn, previous_output: str = "") -> Turn:
 
     Simulates infinite reflection / runaway recursion.
     """
+    reflected_text = previous_output or "Previous assistant output injected here."
     reflected_msg = {
         "role": "user",
         "content": [
             {
                 "type": "text",
-                "text": f"[REFLECTED]: {previous_output or 'Previous assistant output injected here.'}",
+                "text": f"[REFLECTED]: {reflected_text}",
             }
         ],
     }
@@ -291,9 +291,13 @@ class Fabricator:
                 {"role": "user", "content": [{"type": "text", "text": "Hello."}]}
             ],
         }
+        chunk_body = (
+            b'data: {"type":"content_block_delta",'
+            b'"delta":{"type":"text_delta","text":"Hi."}}\n\n'
+        )
         chunk = StreamChunk(
             index=0,
-            raw_hex=b'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hi."}}\n\n'.hex(),
+            raw_hex=chunk_body.hex(),
             anomalous=False,
         )
         turn = Turn(
@@ -305,7 +309,10 @@ class Fabricator:
             request_body=body,
             response_status=200,
             stream_chunks=[chunk],
-            token_usage={"input_tokens": random.randint(100, 500), "output_tokens": random.randint(10, 100)},
+            token_usage={
+                "input_tokens": random.randint(100, 500),
+                "output_tokens": random.randint(10, 100),
+            },
             duration_ms=random.uniform(200, 1500),
         )
         return [turn]

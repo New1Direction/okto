@@ -49,8 +49,8 @@ from selfhswarm.models import (
     HLCModel,
     LiveEvent,
     LiveEventType,
-    MutationScope,
     Mutation,
+    MutationScope,
     Session,
     StreamChunk,
     Turn,
@@ -159,11 +159,11 @@ class SelfHSwarmProxy:
         self,
         client: AgentClient,
         upstream: str | None,
-        ledger: "GenomeLedger",
+        ledger: GenomeLedger,
         clock: HLCClock,
         session_dir: str,
         upstream_ssl: ssl.SSLContext | None = None,
-        event_bus: "EventBus | None" = None,
+        event_bus: EventBus | None = None,
     ) -> None:
         self.client = client
         self.upstream = (
@@ -192,7 +192,7 @@ class SelfHSwarmProxy:
         self._server = await asyncio.start_server(
             self._accept, host, port, limit=2**20  # 1 MiB stream buffer
         )
-        log.info("selfhswarm proxy listening on %s:%s", host, port)
+        log.info("Okto proxy listening on %s:%s", host, port)
 
     async def stop(self) -> None:
         if self._server:
@@ -214,7 +214,7 @@ class SelfHSwarmProxy:
             first_line = await asyncio.wait_for(
                 reader.readline(), timeout=_ACCEPT_TIMEOUT
             )
-        except (asyncio.TimeoutError, ConnectionError):
+        except (TimeoutError, ConnectionError):
             writer.close()
             return
 
@@ -406,7 +406,7 @@ class SelfHSwarmProxy:
                 req_line = await asyncio.wait_for(
                     client_reader.readline(), timeout=_KEEPALIVE_TIMEOUT
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 break
             if not req_line or req_line == b"\r\n":
                 break
@@ -501,20 +501,23 @@ class SelfHSwarmProxy:
                 for c in turn.stream_chunks
                 if c.anomalous
             ]
-            await self._emit(LiveEvent(
-                type=LiveEventType.TURN_COMPLETE,
-                session_id=session.id,
-                payload={
-                    "turn_index": turn.index,
-                    "method": req_line.split()[0].decode("latin-1") if req_line else "POST",
-                    "path": req_line.split()[1].decode("latin-1") if len(req_line.split()) > 1 else "/",
-                    "status_code": status_code,
-                    "duration_ms": turn.duration_ms,
-                    "chunk_count": len(turn.stream_chunks),
-                    "anomaly_count": turn.anomalies_detected,
-                    "chunks": anomalous_chunks,
-                },
-            ))
+            req_parts = req_line.split() if req_line else []
+            await self._emit(
+                LiveEvent(
+                    type=LiveEventType.TURN_COMPLETE,
+                    session_id=session.id,
+                    payload={
+                        "turn_index": turn.index,
+                        "method": req_parts[0].decode("latin-1") if req_parts else "POST",
+                        "path": req_parts[1].decode("latin-1") if len(req_parts) > 1 else "/",
+                        "status_code": status_code,
+                        "duration_ms": turn.duration_ms,
+                        "chunk_count": len(turn.stream_chunks),
+                        "anomaly_count": turn.anomalies_detected,
+                        "chunks": anomalous_chunks,
+                    },
+                )
+            )
 
             # ── g. Keep-alive check ───────────────────────────────────
             conn_client = req_headers.get("connection", "").lower()
@@ -546,7 +549,7 @@ class SelfHSwarmProxy:
                 raw = await asyncio.wait_for(
                     upstream_reader.read(_CHUNK_SIZE), timeout=120.0
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 log.warning("Upstream stream timed out after 120s")
                 break
             if not raw:
@@ -601,7 +604,7 @@ class SelfHSwarmProxy:
                 raw = await asyncio.wait_for(
                     upstream_reader.read(to_read), timeout=60.0
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 break
             if not raw:
                 break
@@ -764,7 +767,7 @@ class SelfHSwarmProxy:
             orjson.dumps(session.model_dump()),
         )
 
-    async def _emit(self, event: "LiveEvent") -> None:
+    async def _emit(self, event: LiveEvent) -> None:
         """Publish to the EventBus if one is attached (no-op otherwise)."""
         if self._event_bus is not None:
             await self._event_bus.publish(event)

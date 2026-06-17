@@ -1,7 +1,7 @@
 """
 Layer 3 — RNA Bus: Append-only genome ledger.
 
-The genome is stored as JSONL at ~/.selfhswarm/genome.jsonl.
+The genome is stored as JSONL at ~/.okto/genome.jsonl.
 Each line is one Mutation, stamped with an HLC.
 
 The ledger is append-only: mutations are never deleted, only pruned
@@ -18,15 +18,15 @@ from __future__ import annotations
 import asyncio
 import logging
 import pathlib
-from typing import Callable
+from collections.abc import Callable
 
 import orjson
 
-from selfhswarm.models import Genome, Mutation, AgentClient
+from selfhswarm.models import Genome, Mutation
 
 log = logging.getLogger(__name__)
 
-_DEFAULT_PATH = pathlib.Path.home() / ".selfhswarm" / "genome.jsonl"
+_DEFAULT_PATH = pathlib.Path.home() / ".okto" / "genome.jsonl"
 
 
 class GenomeLedger:
@@ -63,7 +63,7 @@ class GenomeLedger:
         node_id: str,
         path: pathlib.Path = _DEFAULT_PATH,
         on_append: Callable[[Mutation], None] | None = None,
-    ) -> "GenomeLedger":
+    ) -> GenomeLedger:
         """Load genome from JSONL ledger file, or start fresh."""
         path.parent.mkdir(parents=True, exist_ok=True)
         genome = Genome(node_id=node_id)

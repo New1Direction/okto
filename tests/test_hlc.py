@@ -2,8 +2,6 @@
 
 import time
 
-import pytest
-
 from selfhswarm.hlc import HLC, HLCClock
 
 

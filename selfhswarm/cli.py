@@ -1,12 +1,12 @@
 """
-selfhswarm CLI entrypoint.
+Okto CLI entrypoint.
 
 Commands:
-  selfhswarm run       -- start proxy for a supported agent client
-  selfhswarm broker    -- run the RNA bus broker server
-  selfhswarm fabricate -- generate a camouflage session
-  selfhswarm genome    -- inspect / manage the local genome
-  selfhswarm ca        -- manage the local TLS CA cert
+  okto run       -- start proxy for a supported agent client
+  okto broker    -- run the RNA bus broker server
+  okto fabricate -- generate a camouflage session
+  okto genome    -- inspect / manage the local genome
+  okto ca        -- manage the local TLS CA cert
 """
 
 from __future__ import annotations
@@ -18,7 +18,6 @@ import pathlib
 import subprocess
 import sys
 import uuid
-from typing import Optional
 
 import click
 from rich.console import Console
@@ -28,7 +27,7 @@ from selfhswarm import __version__
 from selfhswarm.models import AgentClient, ScenarioType
 
 console = Console()
-log = logging.getLogger("selfhswarm")
+log = logging.getLogger("okto")
 
 
 # ---------------------------------------------------------------------------
@@ -45,8 +44,12 @@ def _setup_logging(verbose: bool) -> None:
     )
 
 
+def _app_dir() -> pathlib.Path:
+    return pathlib.Path.home() / ".okto"
+
+
 def _node_id_path() -> pathlib.Path:
-    return pathlib.Path.home() / ".selfhswarm" / "node_id"
+    return _app_dir() / "node_id"
 
 
 def _get_or_create_node_id() -> str:
@@ -65,18 +68,18 @@ def _get_or_create_node_id() -> str:
 
 
 @click.group()
-@click.version_option(__version__, prog_name="selfhswarm")
+@click.version_option(__version__, prog_name="okto")
 @click.option("--verbose", "-v", is_flag=True, default=False, help="Enable debug logging.")
 @click.pass_context
 def main(ctx: click.Context, verbose: bool) -> None:
-    """selfhswarm — self-mutating swarm proxy for AI coding agents."""
+    """Okto — self-healing local proxy for AI agent traffic."""
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
     _setup_logging(verbose)
 
 
 # ---------------------------------------------------------------------------
-# selfhswarm run
+# okto run
 # ---------------------------------------------------------------------------
 
 
@@ -98,20 +101,25 @@ def main(ctx: click.Context, verbose: bool) -> None:
 )
 @click.option(
     "--session-dir",
-    default=str(pathlib.Path.home() / ".selfhswarm" / "sessions"),
+    default=str(_app_dir() / "sessions"),
     show_default=True,
     help="Directory for captured session JSONL files.",
 )
 @click.option("--no-live-viewer", is_flag=True, default=False, help="Disable live viewer server.")
-@click.option("--viewer-port", default=7878, show_default=True, help="Port for the Traffic Inspector dashboard.")
+@click.option(
+    "--viewer-port",
+    default=7878,
+    show_default=True,
+    help="Port for the Traffic Inspector dashboard.",
+)
 @click.argument("agent_args", nargs=-1)
 @click.pass_context
 def run(
     ctx: click.Context,
     client: str,
-    upstream: Optional[str],
+    upstream: str | None,
     proxy_port: int,
-    broker: Optional[str],
+    broker: str | None,
     session_dir: str,
     no_live_viewer: bool,
     viewer_port: int,
@@ -124,16 +132,16 @@ def run(
 
     Examples:
 
-      selfhswarm run --client claude -- --model claude-opus-4-6
+      okto run --client claude -- --model claude-opus-4-6
 
-      selfhswarm run --client gemini -- -p "hello"
+      okto run --client gemini -- -p "hello"
 
-      selfhswarm run --client agy
+      okto run --client agy
     """
     node_id = _get_or_create_node_id()
     client_enum = AgentClient(client)
 
-    console.rule(f"[bold cyan]selfhswarm v{__version__}[/bold cyan]")
+    console.rule(f"[bold cyan]Okto v{__version__}[/bold cyan]")
     console.print(f"  Node ID  : [dim]{node_id}[/dim]")
     console.print(f"  Client   : [bold]{client}[/bold]")
     console.print(f"  Upstream : [dim]{upstream or 'auto-detect'}[/dim]")
@@ -167,15 +175,16 @@ async def _run_proxy(
     session_dir: str,
     live_viewer: bool,
     viewer_port: int = 7878,
-    agent_args: list[str] = [],
+    agent_args: list[str] | None = None,
 ) -> None:
     from selfhswarm.hlc import HLCClock
-    from selfhswarm.rna_bus.ledger import GenomeLedger
-    from selfhswarm.rna_bus.broker import RNAClient
     from selfhswarm.proxy.addon import SelfHSwarmProxy
+    from selfhswarm.rna_bus.broker import RNAClient
+    from selfhswarm.rna_bus.ledger import GenomeLedger
     from selfhswarm.viewer.events import EventBus
     from selfhswarm.viewer.server import start_viewer
 
+    agent_args = agent_args or []
     clock = HLCClock(node_id)
     session_path = pathlib.Path(session_dir)
     session_path.mkdir(parents=True, exist_ok=True)
@@ -202,7 +211,8 @@ async def _run_proxy(
         # Give the server a moment to bind
         await asyncio.sleep(0.4)
         console.print(
-            f"[green]✓[/green] Dashboard live at [bold cyan]http://127.0.0.1:{viewer_port}[/bold cyan]"
+            "[green]✓[/green] Dashboard live at "
+            f"[bold cyan]http://127.0.0.1:{viewer_port}[/bold cyan]"
         )
         # Open browser
         import webbrowser
@@ -263,7 +273,7 @@ async def _run_proxy(
             await asyncio.Future()
         except asyncio.CancelledError:
             pass
-    
+
     # Clean up viewer task
     if viewer_task and not viewer_task.done():
         viewer_task.cancel()
@@ -274,7 +284,7 @@ async def _run_proxy(
 
 
 def _resolve_client_cmd(client: AgentClient) -> list[str]:
-    _MAP = {
+    client_commands = {
         AgentClient.CLAUDE: ["claude"],
         AgentClient.GEMINI: ["gemini"],
         AgentClient.CODEX: ["codex"],
@@ -286,11 +296,11 @@ def _resolve_client_cmd(client: AgentClient) -> list[str]:
         AgentClient.PI: ["pi"],
         AgentClient.HERMES: ["hermes"],
     }
-    return _MAP.get(client, ["claude"])
+    return client_commands.get(client, ["claude"])
 
 
 # ---------------------------------------------------------------------------
-# selfhswarm broker
+# okto broker
 # ---------------------------------------------------------------------------
 
 
@@ -308,7 +318,7 @@ def broker(ctx: click.Context, host: str, port: int) -> None:
 
 
 # ---------------------------------------------------------------------------
-# selfhswarm fabricate
+# okto fabricate
 # ---------------------------------------------------------------------------
 
 
@@ -328,21 +338,26 @@ def broker(ctx: click.Context, host: str, port: int) -> None:
     show_default=True,
 )
 @click.option("--seed-session", default=None, help="Path to a real session JSONL to use as seed.")
-@click.option("--output", "-o", default=None, help="Output path for the synthetic session JSONL.")
+@click.option(
+    "--output",
+    "-o",
+    default=None,
+    help="Output path for the synthetic session JSONL.",
+)
 @click.pass_context
 def fabricate(
     ctx: click.Context,
     scenario: str,
     client: str,
-    seed_session: Optional[str],
-    output: Optional[str],
+    seed_session: str | None,
+    output: str | None,
 ) -> None:
     """Generate a synthetic camouflage session for chaos testing."""
     import orjson
 
     from selfhswarm.camouflage.fabricator import Fabricator
     from selfhswarm.hlc import HLCClock
-    from selfhswarm.models import ScenarioType as ST, AgentClient as AC, Session
+    from selfhswarm.models import AgentClient, ScenarioType, Session
 
     node_id = _get_or_create_node_id()
     clock = HLCClock(node_id)
@@ -354,8 +369,8 @@ def fabricate(
         seed = Session.model_validate(data)
 
     result = fab.fabricate(
-        scenario=ST(scenario),
-        client=AC(client),
+        scenario=ScenarioType(scenario),
+        client=AgentClient(client),
         seed=seed,
     )
 
@@ -368,7 +383,7 @@ def fabricate(
 
 
 # ---------------------------------------------------------------------------
-# selfhswarm genome
+# okto genome
 # ---------------------------------------------------------------------------
 
 
@@ -380,12 +395,11 @@ def genome() -> None:
 @genome.command(name="list")
 @click.option("--client", default=None, help="Filter by client.")
 @click.option("--min-confidence", default=0.1, show_default=True)
-def genome_list(client: Optional[str], min_confidence: float) -> None:
+def genome_list(client: str | None, min_confidence: float) -> None:
     """List all mutations in the local genome."""
     import asyncio
-    import orjson
+
     from selfhswarm.rna_bus.ledger import GenomeLedger
-    from selfhswarm.models import AgentClient as AC
 
     node_id = _get_or_create_node_id()
 
@@ -424,14 +438,14 @@ def genome_list(client: Optional[str], min_confidence: float) -> None:
 @click.confirmation_option(prompt="Clear the entire local genome?")
 def genome_clear() -> None:
     """Delete all mutations from the local genome."""
-    p = pathlib.Path.home() / ".selfhswarm" / "genome.jsonl"
+    p = _app_dir() / "genome.jsonl"
     if p.exists():
         p.unlink()
     console.print("[green]✓[/green] Genome cleared.")
 
 
 # ---------------------------------------------------------------------------
-# selfhswarm ca
+# okto ca
 # ---------------------------------------------------------------------------
 
 

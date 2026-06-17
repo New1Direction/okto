@@ -1,5 +1,5 @@
 """
-Core data models for selfhswarm.
+Core data models for Okto.
 
 All models are Pydantic v2 with orjson-backed serialisation for
 high-throughput streaming scenarios.
@@ -9,20 +9,19 @@ from __future__ import annotations
 
 import time
 import uuid
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
 from selfhswarm.hlc import HLC
 
-
 # ---------------------------------------------------------------------------
 # Enumerations
 # ---------------------------------------------------------------------------
 
 
-class MutationScope(str, Enum):
+class MutationScope(StrEnum):
     """Where in the HTTP exchange a mutation applies."""
 
     REQUEST_HEADER = "request_header"
@@ -32,7 +31,7 @@ class MutationScope(str, Enum):
     STREAM_CHUNK = "stream_chunk"
 
 
-class ProxyState(str, Enum):
+class ProxyState(StrEnum):
     """States of the self-patching proxy state machine."""
 
     NOMINAL = "nominal"
@@ -42,7 +41,7 @@ class ProxyState(str, Enum):
     MONITORING = "monitoring"
 
 
-class AgentClient(str, Enum):
+class AgentClient(StrEnum):
     """Supported agent CLI clients."""
 
     CLAUDE = "claude"
@@ -74,13 +73,13 @@ class HLCModel(BaseModel):
         return HLC(wall_ms=self.wall_ms, counter=self.counter, node_id=self.node_id)
 
     @classmethod
-    def from_hlc(cls, h: HLC) -> "HLCModel":
+    def from_hlc(cls, h: HLC) -> HLCModel:
         return cls(wall_ms=h.wall_ms, counter=h.counter, node_id=h.node_id)
 
-    def __lt__(self, other: "HLCModel") -> bool:
+    def __lt__(self, other: HLCModel) -> bool:
         return self.to_hlc() < other.to_hlc()
 
-    def __le__(self, other: "HLCModel") -> bool:
+    def __le__(self, other: HLCModel) -> bool:
         return self.to_hlc() <= other.to_hlc()
 
 
@@ -125,12 +124,12 @@ class Mutation(BaseModel):
     def patch(self) -> bytes:
         return bytes.fromhex(self.patch_hex)
 
-    def decayed(self, hours_elapsed: float, decay_rate: float = 0.05 / 24) -> "Mutation":
+    def decayed(self, hours_elapsed: float, decay_rate: float = 0.05 / 24) -> Mutation:
         """Return a copy with confidence decayed proportionally to elapsed time."""
         new_conf = max(0.0, self.confidence - decay_rate * hours_elapsed)
         return self.model_copy(update={"confidence": new_conf})
 
-    def reinforced(self) -> "Mutation":
+    def reinforced(self) -> Mutation:
         """Return a copy with confidence reset and reinforcement count incremented."""
         return self.model_copy(
             update={
@@ -149,7 +148,7 @@ class Genome(BaseModel):
     """
     The full local genome: an HLC-ordered list of Mutations.
 
-    This is persisted as append-only JSONL at ~/.selfhswarm/genome.jsonl.
+    This is persisted as append-only JSONL at ~/.okto/genome.jsonl.
     """
 
     node_id: str
@@ -168,7 +167,7 @@ class Genome(BaseModel):
             and m.confidence > 0.1
         ]
 
-    def apply(self, mutation: Mutation) -> "Genome":
+    def apply(self, mutation: Mutation) -> Genome:
         """Append a new mutation, replacing any existing one with the same id."""
         existing_ids = {m.id for m in self.mutations}
         if mutation.id in existing_ids:
@@ -177,7 +176,7 @@ class Genome(BaseModel):
             updated = self.mutations + [mutation]
         return self.model_copy(update={"mutations": updated})
 
-    def prune(self, min_confidence: float = 0.1) -> "Genome":
+    def prune(self, min_confidence: float = 0.1) -> Genome:
         """Remove low-confidence mutations."""
         pruned = [m for m in self.mutations if m.confidence >= min_confidence]
         return self.model_copy(update={"mutations": pruned})
@@ -228,7 +227,7 @@ class Session(BaseModel):
     # NEW: enriched by the proxy on CONNECT
     connect_target: str | None = None   # "api.anthropic.com:443"
     tls_established: bool = False
-    provider: "ProviderProfile | None" = None
+    provider: ProviderProfile | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -236,7 +235,7 @@ class Session(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class ScenarioType(str, Enum):
+class ScenarioType(StrEnum):
     HALLUCINATED_TOOL = "hallucinated_tool"
     INFINITE_CONTEXT_GROWTH = "infinite_context_growth"
     IAM_CONSTRAINT_HALLUCINATION = "iam_constraint_hallucination"
@@ -263,7 +262,7 @@ class CamouflageSession(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class BusMessageType(str, Enum):
+class BusMessageType(StrEnum):
     HELLO = "hello"
     DELTA = "delta"
     PUSH = "push"
@@ -324,7 +323,7 @@ def detect_provider(hostname: str) -> ProviderProfile:
 # ---------------------------------------------------------------------------
 
 
-class LiveEventType(str, Enum):
+class LiveEventType(StrEnum):
     SESSION_START    = "session_start"
     TURN_COMPLETE    = "turn_complete"
     ANOMALY_DETECTED = "anomaly_detected"

@@ -14,23 +14,18 @@ Endpoints
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import pathlib
-from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator
 
 import orjson
 import uvicorn
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from selfhswarm.hlc import HLCClock
 from selfhswarm.models import (
-    AgentClient,
     ChunkReplay,
-    LiveEventType,
     MutationScope,
     ReplayResult,
     Session,
@@ -64,7 +59,7 @@ def create_app(
     """
     session_path = pathlib.Path(session_dir)
 
-    app = FastAPI(title="selfHswarm Traffic Inspector", docs_url=None, redoc_url=None)
+    app = FastAPI(title="Okto Traffic Inspector", docs_url=None, redoc_url=None)
 
     # ------------------------------------------------------------------
     # HTML dashboard

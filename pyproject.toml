@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "selfhswarm"
+name = "okto"
 version = "0.1.0"
-description = "Self-mutating swarm proxy for AI coding agents — live editor, chaos harness, distributed genome"
+description = "Self-healing local proxy for AI agent traffic — inspect, repair, replay, sync"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -47,7 +47,7 @@ dev = [
 ]
 
 [project.scripts]
-selfhswarm = "selfhswarm.cli:main"
+okto = "selfhswarm.cli:main"
 
 # Keep heavy, unused binary assets (3D model exports, marketing video) out of
 # every built artifact regardless of VCS tracking.

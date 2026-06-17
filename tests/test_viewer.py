@@ -13,12 +13,10 @@ from __future__ import annotations
 import asyncio
 import json
 import pathlib
-import tempfile
 
 import orjson
 import pytest
 from fastapi.testclient import TestClient
-from starlette.testclient import TestClient as StarletteTestClient
 
 from selfhswarm.hlc import HLCClock
 from selfhswarm.models import (
@@ -26,8 +24,6 @@ from selfhswarm.models import (
     HLCModel,
     LiveEvent,
     LiveEventType,
-    Mutation,
-    MutationScope,
     Session,
     StreamChunk,
     Turn,
@@ -35,7 +31,6 @@ from selfhswarm.models import (
 )
 from selfhswarm.viewer.events import EventBus
 from selfhswarm.viewer.server import create_app
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -212,7 +207,7 @@ class TestRestEndpoints:
         """GET / should return the dashboard HTML."""
         r = client.get("/")
         assert r.status_code == 200
-        assert "selfHswarm" in r.text
+        assert "Okto" in r.text
         assert "Traffic Inspector" in r.text
 
     def test_sessions_empty(self, client: TestClient):

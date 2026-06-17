@@ -30,9 +30,34 @@ coverage.xml
 .env.*
 *.pem
 *.key
+vast_re_key*
+
+# ---- Large/binary local artifacts ----
+*.exe
+*.nsz
+*.mp4
+!docs/okto-launch-loop.mp4
 
 # ---- Large 3D assets (excluded from git; host separately) ----
 *.glb
+
+# ---- Local reverse-engineering scratch ----
+check_header_uniq.py
+check_nsx.py
+const_positions.py
+dec_sample.py
+download_rf.py
+find_extensions.py
+fixnames.py
+hermes-toolkit-guide.html
+hexdump_nsz.py
+hook_gemdump_fixed.py
+ks_probe.py
+parse_nsz.py
+probe_sample.py
+pyghidra_mcp_projects/
+raw_sample.py
+reorg_rf.py
 
 # ---- OS / editor cruft ----
 .DS_Store

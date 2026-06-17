@@ -32,7 +32,6 @@ class TestFabricator:
         assert "x-model-id" in headers
 
     def test_iam_hallucination_contains_arn(self, fab):
-        import orjson
 
         s = fab.fabricate(ScenarioType.IAM_CONSTRAINT_HALLUCINATION, AgentClient.CLAUDE)
         chunk = s.turns[-1].stream_chunks[0]

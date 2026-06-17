@@ -18,11 +18,14 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
-_UTC = datetime.timezone.utc
-_NOW = lambda: datetime.datetime.now(_UTC)
+_UTC = datetime.UTC
 
 
-_CERT_DIR = pathlib.Path.home() / ".selfhswarm" / "certs"
+def _now() -> datetime.datetime:
+    return datetime.datetime.now(_UTC)
+
+
+_CERT_DIR = pathlib.Path.home() / ".okto" / "certs"
 
 
 class CertAuthority:
@@ -30,11 +33,11 @@ class CertAuthority:
     Local self-signed Certificate Authority.
 
     On first use, generates a CA key + cert and stores them under
-    ~/.selfhswarm/certs/. Subsequent calls sign per-host leaf certs
+    ~/.okto/certs/. Subsequent calls sign per-host leaf certs
     using that CA.
 
     To make the browser/curl trust the CA, run:
-        selfhswarm ca trust
+        okto ca trust
     """
 
     def __init__(self, cert_dir: pathlib.Path = _CERT_DIR) -> None:
@@ -89,7 +92,7 @@ class CertAuthority:
 
         key = _gen_rsa_key()
         subject = issuer = x509.Name(
-            [x509.NameAttribute(NameOID.COMMON_NAME, "selfhswarm Local CA")]
+            [x509.NameAttribute(NameOID.COMMON_NAME, "Okto Local CA")]
         )
         cert = (
             x509.CertificateBuilder()
@@ -97,8 +100,8 @@ class CertAuthority:
             .issuer_name(issuer)
             .public_key(key.public_key())
             .serial_number(x509.random_serial_number())
-            .not_valid_before(_NOW())
-            .not_valid_after(_NOW() + datetime.timedelta(days=3650))
+            .not_valid_before(_now())
+            .not_valid_after(_now() + datetime.timedelta(days=3650))
             .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
             .sign(key, hashes.SHA256())
         )
@@ -138,9 +141,9 @@ class CertAuthority:
             .issuer_name(self._ca_cert.subject)
             .public_key(key.public_key())
             .serial_number(x509.random_serial_number())
-            .not_valid_before(_NOW())
+            .not_valid_before(_now())
             .not_valid_after(
-                _NOW() + datetime.timedelta(days=365)
+                _now() + datetime.timedelta(days=365)
             )
             .add_extension(
                 x509.SubjectAlternativeName(san_entries), critical=False

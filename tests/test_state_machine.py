@@ -30,7 +30,6 @@ def sm(clock):
 
 class TestPatchEngine:
     def test_no_anomaly_clean_sse(self):
-        engine = PatchEngine()
         chunk = b"data: {}\n\n"
         # No detectors triggered directly; test via state machine
         assert b"data:" in chunk
@@ -76,7 +75,15 @@ class TestPatchEngine:
         clock = HLCClock("test")
         hlc_model = HLCModel.from_hlc(clock.tick())
         raw = b"[DONE]"
-        mut = engine.derive(raw, "missing prefix", AgentClient.CLAUDE, MutationScope.STREAM_CHUNK, "n", "s", hlc_model)
+        mut = engine.derive(
+            raw,
+            "missing prefix",
+            AgentClient.CLAUDE,
+            MutationScope.STREAM_CHUNK,
+            "n",
+            "s",
+            hlc_model,
+        )
         assert mut is not None
         assert mut.patch == b"data: [DONE]"
 

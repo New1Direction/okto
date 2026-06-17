@@ -7,7 +7,7 @@ The broker is a hub-and-spoke server that:
   3. Accepts PUSH (new mutations from a node)
   4. BROADCASTs pushed mutations to all other connected nodes
 
-The broker can run locally (selfhswarm broker) for a LAN swarm,
+The broker can run locally (`okto broker`) for a LAN swarm,
 or a shared public instance can be used for cross-machine swarms.
 
 Protocol (JSON over WebSocket):
@@ -25,10 +25,10 @@ from typing import Any
 
 import orjson
 import websockets
-from websockets.asyncio.server import serve, ServerConnection
+from websockets.asyncio.server import ServerConnection, serve
 
 from selfhswarm.hlc import HLC, HLCClock
-from selfhswarm.models import BusMessage, BusMessageType, HLCModel, Mutation
+from selfhswarm.models import BusMessage, BusMessageType, Mutation
 
 log = logging.getLogger(__name__)
 

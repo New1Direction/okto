@@ -12,10 +12,9 @@ the patch engine derives a minimal rewrite rule and emits it to the genome.
 from __future__ import annotations
 
 import re
-from typing import Callable
+from collections.abc import Callable
 
-from selfhswarm.models import Mutation, MutationScope, ProxyState, AgentClient, StreamChunk
-
+from selfhswarm.models import AgentClient, Mutation, MutationScope, ProxyState, StreamChunk
 
 # ---------------------------------------------------------------------------
 # Anomaly detectors
