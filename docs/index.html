@@ -9,7 +9,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
   <style>
     /* ── Tokens ─────────────────────────────────────────────────────────── */
     :root {
@@ -424,8 +423,6 @@
       position: relative;
       overflow: hidden;
       transition: border-color 0.2s, background 0.2s, transform 0.2s;
-      opacity: 0;
-      transform: translateY(20px);
     }
     .uc-card:hover {
       border-color: var(--b2);
@@ -541,7 +538,9 @@
     .div { height: 1px; background: var(--b1); margin: 0; }
 
     /* ── Scroll reveal ──────────────────────────────────────────────────── */
-    .reveal { opacity: 0; transform: translateY(24px); }
+    /* Content is visible by default. JS adds motion only after the page has rendered,
+       so a blocked script/CDN can never leave the page blank or stuck on load. */
+    .reveal { opacity: 1; transform: none; }
 
     /* ── Terminal window ────────────────────────────────────────────────── */
     .terminal {
@@ -1116,28 +1115,45 @@
   </div>
   <div>Self-healing local proxy for AI agent traffic.</div>
   <div style="margin-top:6px; color: var(--t3);">
-    Built with Python · FastAPI · anime.js · IBM Plex Mono
+    Built with Python · FastAPI · Web Animations · IBM Plex Mono
   </div>
 </footer>
 
 <script>
 'use strict';
 
+const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+const easeOutQuart = 'cubic-bezier(0.25, 1, 0.5, 1)';
+const easeOutExpo = 'cubic-bezier(0.16, 1, 0.3, 1)';
+
+function runAnim(targets, frames, options = {}) {
+  const list = typeof targets === 'string' ? document.querySelectorAll(targets) : (targets?.length ? targets : [targets]);
+  [...list].filter(Boolean).forEach((el, index) => {
+    if (reducedMotion || typeof el.animate !== 'function') return;
+    el.animate(frames, {
+      duration: options.duration ?? 500,
+      delay: (options.delay ?? 0) + (options.stagger ? index * options.stagger : 0),
+      easing: options.easing ?? easeOutQuart,
+      fill: options.fill ?? 'both',
+    });
+  });
+}
+
 /* ── Hero entrance ─────────────────────────────────────────────── */
-anime.timeline({ easing: 'easeOutExpo' })
-  .add({ targets: '#hero-kicker', opacity: [0,1], translateY: [-12,0], duration: 500 })
-  .add({ targets: '#hero-h1',     opacity: [0,1], translateY: [20,0],  duration: 700 }, '-=200')
-  .add({ targets: '#hero-sub',    opacity: [0,1], translateY: [16,0],  duration: 600 }, '-=400')
-  .add({ targets: '#hero-cmd',    opacity: [0,1], translateY: [12,0],  duration: 500, scale:[0.97,1] }, '-=300')
-  .add({ targets: '#hero-metrics .metric-pill', opacity: [0,1], translateY: [10,0], delay: anime.stagger(70), duration: 420 }, '-=240');
+runAnim('#hero-kicker', [{ opacity: 0, transform: 'translateY(-12px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 500, easing: easeOutExpo });
+runAnim('#hero-h1', [{ opacity: 0, transform: 'translateY(20px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 700, delay: 180, easing: easeOutExpo });
+runAnim('#hero-sub', [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 600, delay: 320, easing: easeOutExpo });
+runAnim('#hero-cmd', [{ opacity: 0, transform: 'translateY(12px) scale(.97)' }, { opacity: 1, transform: 'translateY(0) scale(1)' }], { duration: 500, delay: 420, easing: easeOutExpo });
+runAnim('#hero-metrics .metric-pill', [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 420, delay: 500, stagger: 70, easing: easeOutExpo });
 
 /* ── Cinematic particle field ───────────────────────────────────── */
 const heroCanvas = document.getElementById('hero-canvas');
-const hctx = heroCanvas.getContext('2d');
+const hctx = heroCanvas?.getContext?.('2d');
 let particles = [];
 const particleCount = window.matchMedia('(max-width: 700px)').matches ? 38 : 86;
 
 function resizeHeroCanvas() {
+  if (!heroCanvas || !hctx) return;
   const rect = heroCanvas.getBoundingClientRect();
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   heroCanvas.width = Math.floor(rect.width * dpr);
@@ -1154,6 +1170,7 @@ function resizeHeroCanvas() {
 }
 
 function drawHeroCanvas() {
+  if (!heroCanvas || !hctx) return;
   const rect = heroCanvas.getBoundingClientRect();
   hctx.clearRect(0, 0, rect.width, rect.height);
   for (const p of particles) {
@@ -1195,47 +1212,31 @@ requestAnimationFrame(drawHeroCanvas);
 window.addEventListener('resize', resizeHeroCanvas);
 
 /* ── Scroll reveal with IntersectionObserver ─────────────────────── */
-const io = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (!entry.isIntersecting) return;
-    const el = entry.target;
-    anime({
-      targets: el,
-      opacity: [0, 1],
-      translateY: [20, 0],
-      duration: 500,
-      easing: 'easeOutQuart',
+if ('IntersectionObserver' in window) {
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      runAnim(entry.target, [{ opacity: 0, transform: 'translateY(20px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 500 });
+      io.unobserve(entry.target);
     });
-    io.unobserve(el);
-  });
-}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 
-document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 
-/* ── Use case cards — staggered in groups ─────────────────────────── */
-const ucObs = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (!entry.isIntersecting) return;
-    // Find all siblings in the same group (4 per row)
-    const grid = entry.target.closest('.uc-grid');
-    const cards = [...grid.querySelectorAll('.uc-card:not([data-revealed])')];
-    if (cards.length === 0) return;
-    // Reveal next batch of 4
-    const batch = cards.slice(0, 4);
-    batch.forEach(c => c.dataset.revealed = '1');
-    anime({
-      targets: batch,
-      opacity: [0, 1],
-      translateY: [20, 0],
-      delay: anime.stagger(70),
-      duration: 450,
-      easing: 'easeOutQuart',
+  const ucObs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const grid = entry.target.closest('.uc-grid');
+      const cards = [...(grid?.querySelectorAll('.uc-card:not([data-revealed])') ?? [])];
+      const batch = cards.slice(0, 4);
+      batch.forEach(c => c.dataset.revealed = '1');
+      runAnim(batch, [{ opacity: 0, transform: 'translateY(20px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 450, stagger: 70 });
+      ucObs.unobserve(entry.target);
     });
-    ucObs.unobserve(entry.target);
-  });
-}, { threshold: 0.08, rootMargin: '0px 0px -20px 0px' });
+  }, { threshold: 0.08, rootMargin: '0px 0px -20px 0px' });
 
-document.querySelectorAll('.uc-card').forEach(el => ucObs.observe(el));
+  document.querySelectorAll('.uc-card').forEach(el => ucObs.observe(el));
+}
 
 /* ── Copy command ─────────────────────────────────────────────────── */
 function copyCmd(btn) {
