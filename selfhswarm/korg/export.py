@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import secrets
 import tempfile
 import uuid
 from dataclasses import dataclass, field
@@ -160,6 +161,7 @@ def build_journal(
     *,
     replay: bool = True,
     exported_at_ms: int | None = None,
+    chain_key: bytes | None = None,
 ) -> tuple[list[dict], set[str]]:
     """
     Map *capture* onto Korg events. Returns (sealed events, published values):
@@ -370,14 +372,15 @@ def build_journal(
         "okto.export_manifest",
         {"export_schema": EXPORT_SCHEMA, "korg_spec": SPEC_VERSION,
          "redaction_policy": REDACTION_POLICY, "fingerprint_scheme": FINGERPRINT_SCHEME,
-         "fingerprint_key_id": fp.key_id, "source_fingerprint": fp(capture.source_bytes)},
+         "fingerprint_key_id": fp.key_id, "source_fingerprint": fp(capture.source_bytes),
+         "chain_hash": "hmac-sha256" if chain_key else "sha256"},
         {"events": len(journal.events) + 1, "anomalies": anomaly_events,
          "repairs": repair_events, "replay_checks": replay_checks,
          "withheld": list(WITHHELD)},
         triggered_by=root,
         at_ms=export_ms,
     )
-    return seal_chain(journal.events), published
+    return seal_chain(journal.events, chain_key), published
 
 
 def export_capture(
@@ -387,17 +390,43 @@ def export_capture(
     *,
     replay: bool = True,
     exported_at_ms: int | None = None,
+    chain_key: bytes | None = None,
 ) -> bytes:
-    """Export *capture* as korg-ledger@v1 JSONL bytes. Raises BoundaryViolationError."""
+    """
+    Export *capture* as korg-ledger@v1 JSONL bytes. Raises BoundaryViolationError.
+
+    With *chain_key* the chain is HMAC-SHA256 (Korg's tamper-proof mode): it
+    verifies only with the key, e.g. ``korg-verify file --key <key>``.
+    """
     events, published = build_journal(
-        capture, fingerprinter, genome, replay=replay, exported_at_ms=exported_at_ms
+        capture, fingerprinter, genome, replay=replay, exported_at_ms=exported_at_ms,
+        chain_key=chain_key,
     )
-    errors = verify_chain(events) + verify_dag(events)
+    errors = verify_chain(events, chain_key) + verify_dag(events)
     if errors:  # pragma: no cover - would be an exporter bug
         raise RuntimeError(f"exporter produced an invalid journal: {errors}")
     canaries = boundary.collect_canaries(capture.session, genome or [])
     canaries |= fingerprinter.canaries()
+    if chain_key:
+        canaries |= {chain_key.decode("utf-8", "replace"), chain_key.hex()}
     return b"".join(boundary.guard(events, canaries, published))
+
+
+def load_or_create_chain_key(path: pathlib.Path) -> bytes:
+    """
+    Read the chain HMAC key, creating a random one (mode 0600) if missing.
+    It is stored as text because Korg's verifiers take ``--key <string>``.
+    """
+    path = pathlib.Path(path)
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(secrets.token_urlsafe(32) + "\n")
+    key = path.read_text().strip().encode("utf-8")
+    if len(key) < 16:
+        raise ValueError("chain key must be at least 16 characters")
+    return key
 
 
 def write_atomic(data: bytes, path: pathlib.Path) -> None:
@@ -416,7 +445,7 @@ def write_atomic(data: bytes, path: pathlib.Path) -> None:
         raise
 
 
-def verify_export(data: bytes) -> list[str]:
+def verify_export(data: bytes, chain_key: bytes | None = None) -> list[str]:
     """
     Check an export file before handing it to Korg: JSONL parse, hash chain,
     causal DAG, structural allowlist, and secret scan (canaries need the
@@ -437,11 +466,17 @@ def verify_export(data: bytes) -> list[str]:
         )
     if not events:
         return errors + ["no events"]
-    errors.extend(verify_chain(events))
+    last = events[-1]
+    manifest_args = (
+        last.get("event", {}).get("args", {}) if isinstance(last, dict) else {}
+    )
+    if manifest_args.get("chain_hash") == "hmac-sha256" and chain_key is None:
+        errors.append("keyed chain (hmac-sha256): verify with the chain key")
+    else:
+        errors.extend(verify_chain(events, chain_key))
     errors.extend(verify_dag(events))
     for e in events:
         errors.extend(boundary.check_structure(e))
-    last = events[-1]
     tool = last.get("event", {}).get("tool_name") if isinstance(last, dict) else None
     if tool != "okto.export_manifest":
         errors.append("last event must be okto.export_manifest (export truncated?)")

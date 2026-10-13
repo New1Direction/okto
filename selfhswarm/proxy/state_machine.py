@@ -90,7 +90,7 @@ class PatchEngine:
 
     Strategy:
     1. Try each genome mutation for this client (newest HLC first).
-    2. If a mutation matches, apply it and mark as reinforced.
+    2. If a mutation's pattern matches the chunk, apply it and mark it reinforced.
     3. If no mutation matches, derive a new rule and return it.
     """
 
@@ -109,6 +109,8 @@ class PatchEngine:
             if mut.scope != scope:
                 continue
             try:
+                if not self._matches(chunk, mut):
+                    continue
                 rewritten = self._apply_one(chunk, mut)
                 return rewritten, mut
             except Exception:
@@ -153,6 +155,15 @@ class PatchEngine:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _matches(self, chunk: bytes, mut: Mutation) -> bool:
+        """True if *mut* would rewrite *chunk*; non-matching rules must not claim a repair."""
+        if mut.patch_type == "literal":
+            return bool(mut.pattern) and mut.pattern in chunk
+        if mut.patch_type == "regex_sub":
+            return re.search(mut.pattern, chunk) is not None
+        # header_set is applied at the header layer; json_patch is not implemented.
+        return False
 
     def _apply_one(self, chunk: bytes, mut: Mutation) -> bytes:
         if mut.patch_type == "literal":

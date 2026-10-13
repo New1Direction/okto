@@ -10,21 +10,30 @@ The export is one-way and sanitized. HTTPS interception, raw captures, and the m
 okto korg export <session-id> -o session.korg.jsonl   # from ~/.okto/sessions
 okto korg export ./capture.jsonl -o out.jsonl          # any capture file, incl. `okto fabricate` output
 okto korg verify session.korg.jsonl                    # chain, DAG, schema allowlist, secret scan
+okto korg export --all --output-dir exports/           # every capture, one file each
 
 # Korg's own verifiers accept the file unchanged
 korg-verify session.korg.jsonl
 npx @korgg/ledger-verify session.korg.jsonl
+
+# Tamper-proof mode: HMAC-keyed chain (Korg spec §3), verifiable only with the key
+okto korg export <session-id> --chain-key-file ~/.okto/korg_chain.key -o keyed.jsonl
+okto korg verify keyed.jsonl --chain-key-file ~/.okto/korg_chain.key
+korg-verify keyed.jsonl --key "$(cat ~/.okto/korg_chain.key)"
 ```
 
 | Option | Default | Meaning |
 |---|---|---|
 | `--session-dir` | `~/.okto/sessions` | Where a session id is looked up |
+| `--all` | off | Export every capture in `--session-dir` |
 | `--output`, `-o` | stdout | Output file, written atomically with mode `0600` |
+| `--output-dir` | — | Required for several captures; files are named `<session-ref>.korg.jsonl` (a fingerprint, not the session id) |
 | `--genome` | `~/.okto/genome.jsonl` | Genome for repair summaries and replay |
 | `--no-replay` | off | Skip replay evidence |
 | `--key-file` | `~/.okto/korg_export.key` | Local HMAC key for fingerprints, created on first use (mode `0600`) |
+| `--chain-key-file` | none | HMAC-key the hash chain. Created on first use (mode `0600`) as text, because Korg's verifiers take `--key <string>` |
 
-If any boundary check fails, the command exits non-zero, writes nothing, and names the failing event and field. It never prints the value that tripped the check.
+If a boundary check fails for a capture, nothing is written for it and the error names the failing event and field, never the value that tripped the check. In a batch, the other captures are still exported and the command exits non-zero.
 
 ## Contract
 
@@ -36,7 +45,10 @@ If any boundary check fails, the command exits non-zero, writes nothing, and nam
 | Redaction policy | `okto-redaction@1` |
 | Fingerprints | `hmac-sha256:<64 hex>` under the local key |
 
-Compatibility is checked against Korg's frozen conformance vectors (`tests/fixtures/korg-ledger-v1`). During development, exports were also checked with Korg's Python and JS verifiers and by deserializing them as Korg's Rust `korg_registry::log::JournalEvent`.
+Compatibility is checked two ways:
+
+- Unit tests reproduce Korg's frozen conformance vectors (`tests/fixtures/korg-ledger-v1`).
+- `scripts/korg_compat/run.sh`, run in CI as the "Korg compatibility" job, exports sample captures, plain and keyed. It checks them with Korg's JS verifier and `korg-ledger-py`, and deserializes them as Korg's Rust `korg_registry::log::JournalEvent`. Korg is pinned to a commit in the script and the workflow; bump both together.
 
 A breaking change to the event shapes below bumps the Okto schema to `okto-korg-export@2`. Additive fields keep `@1`, and `okto korg verify` rejects any field it does not know.
 
@@ -65,7 +77,7 @@ A breaking change to the event shapes below bumps the Okto schema to `okto-korg-
 | `okto.repair` | `mutation_id`, `anomaly_type`, `scope`¹, `patch_type`¹ | `in_genome`, `applications`, `confidence_bp`¹, `reinforcement_count`¹, `origin_node`¹, `pattern_fingerprint`¹, `patch_fingerprint`¹, `pattern_size_bytes`¹, `patch_size_bytes`¹ |
 | `okto.replay` | `engine`, `genome_fingerprint`, `genome_mutations` | `turns`, `anomalies`, `repaired`, `resolved`, `regressions`, `newly_repaired`, `matches_capture`, `unresolved_anomaly_types` |
 | `okto.replay_check` | `turn_index`, `chunk_position`, `anomaly_type` | `captured_repaired`, `replay_repaired`, `replay_output_changed`, `matches_capture`, `replay_output_fingerprint`¹, `mutation_id`¹ |
-| `okto.export_manifest` | `export_schema`, `korg_spec`, `redaction_policy`, `fingerprint_scheme`, `fingerprint_key_id`, `source_fingerprint` | `events`, `anomalies`, `repairs`, `replay_checks`, `withheld` |
+| `okto.export_manifest` | `export_schema`, `korg_spec`, `redaction_policy`, `fingerprint_scheme`, `fingerprint_key_id`, `source_fingerprint`, `chain_hash` (`sha256` or `hmac-sha256`) | `events`, `anomalies`, `repairs`, `replay_checks`, `withheld` |
 
 ¹ Optional: present only when known and safe to export.
 
@@ -73,7 +85,7 @@ Notes:
 
 - `anomaly_type` is one of `bare_json_without_data_prefix`, `malformed_json_in_sse_frame`, `empty_response_body`, `line_ending_mismatch`, `protocol_anomaly`.
 - `confidence_bp` is confidence in basis points (0–10000). Korg ledgers carry integers only.
-- `output_changed: false` with `repaired: true` means a genome mutation was applied but did not change the bytes. The current patch engine applies the first in-scope mutation to an anomalous chunk without checking that its pattern matches.
+- `output_changed: false` with `repaired: true` means a matching mutation was applied but left the bytes unchanged.
 - `okto.replay` `success` is false when the replay leaves anomalies unresolved or a capture-time repair no longer happens (`regressions > 0`).
 - `matches_capture` compares the fingerprint of the replay output with the fingerprint of the output recorded at capture time.
 
@@ -88,7 +100,7 @@ The manifest's `withheld` list names these categories:
 - request targets and query strings
 - session ids and node ids, which are exported only as fingerprints
 - provider hosts that Okto does not recognize, which may be internal gateways
-- the fingerprint key
+- the fingerprint key and the chain key
 
 ## How the boundary is enforced
 

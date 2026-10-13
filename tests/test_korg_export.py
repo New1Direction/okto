@@ -269,8 +269,10 @@ class TestExportShape:
         assert first["raw_fingerprint"] == fp(SSE_CHUNKS[1])
         assert first["repaired_fingerprint"] == fp(b"data: " + SSE_CHUNKS[1])
         assert first["output_changed"] is True
-        # The truncated frame is "applied" but its bytes do not change: say so.
-        assert anomalies[1]["event"]["result"]["output_changed"] is False
+        # No rule can repair the truncated frame: it is reported unrepaired.
+        truncated = anomalies[1]["event"]["result"]
+        assert truncated["repaired"] is False and truncated["output_changed"] is False
+        assert "repaired_fingerprint" not in truncated and anomalies[1]["event"]["success"] is False
 
         inference = next(e for e in events if e["event"]["tool_name"] == "llm_inference")
         assert inference["event"]["args"] == {"turn_index": 0, "model": "claude-opus-4-6",
@@ -280,7 +282,8 @@ class TestExportShape:
         assert inference["event"]["duration_ms"] == 413
 
         repairs = [e for e in events if e["event"]["tool_name"] == "okto.repair"]
-        assert len(repairs) == 1 and repairs[0]["event"]["result"]["applications"] == 4
+        # Derived on turn 0, reused from the genome on turn 1.
+        assert len(repairs) == 1 and repairs[0]["event"]["result"]["applications"] == 2
         assert repairs[0]["event"]["args"]["mutation_id"] == derived[0].id
         assert repairs[0]["event"]["result"]["confidence_bp"] == 10_000
 
@@ -288,6 +291,7 @@ class TestExportShape:
         assert manifest["result"]["events"] == len(events)
         assert manifest["args"]["fingerprint_key_id"] == fp.key_id
         assert "request_headers" in manifest["result"]["withheld"]
+        assert manifest["args"]["chain_hash"] == "sha256"
 
     def test_export_is_deterministic_and_key_scoped(self):
         capture, derived = _secret_capture()
@@ -510,7 +514,7 @@ class TestKorgCli:
 
         ok = runner.invoke(main, ["korg", "verify", str(out)])
         assert ok.exit_code == 0, ok.output
-        out.write_text(data.replace('"repairs_applied":2', '"repairs_applied":9', 1))
+        out.write_text(data.replace('"repairs_applied":1', '"repairs_applied":9', 1))
         bad = runner.invoke(main, ["korg", "verify", str(out)])
         assert bad.exit_code == 1 and "entry_hash mismatch" in bad.output
 
@@ -547,3 +551,58 @@ class TestKorgCli:
         root = _events(data)[0]["event"]["result"]
         assert root["synthetic"] is True and root["scenario"] == "stream_mid_truncation"
         assert verify_export(data) == []
+
+    def test_batch_export_writes_good_captures_and_skips_blocked_ones(self, tmp_path):
+        sessions, genome = self._write_capture(tmp_path)
+        blocked, _ = _secret_capture()
+        blocked.session.id = "b10cced0-0000-4000-8000-000000000000"
+        blocked.session.turns[0].request_body["note"] = "okto-state-machine"
+        (sessions / f"{blocked.session.id}.jsonl").write_bytes(
+            orjson.dumps(blocked.session.model_dump())
+        )
+        out_dir = tmp_path / "exports"
+        key = tmp_path / "k.key"
+        result = CliRunner().invoke(main, [
+            "korg", "export", "--all", SECRETS["session_id"], "--session-dir", str(sessions),
+            "--genome", str(genome), "--key-file", str(key), "--output-dir", str(out_dir),
+        ])
+        assert result.exit_code == 1 and "1 of 2 export(s) failed" in result.output
+        written = sorted(out_dir.iterdir())
+        ref = Fingerprinter(key.read_bytes())(f"okto-session:{SECRETS['session_id']}")
+        assert [p.name for p in written] == [f"{ref.split(':')[1][:16]}.korg.jsonl"]
+        assert verify_export(written[0].read_bytes()) == []
+
+    def test_batch_needs_output_dir(self, tmp_path):
+        sessions, _ = self._write_capture(tmp_path)
+        result = CliRunner().invoke(main, ["korg", "export", "--all",
+                                           "--session-dir", str(sessions)])
+        assert result.exit_code == 2 and "--output-dir" in result.output
+
+    def test_keyed_chain_verifies_only_with_the_key(self, tmp_path):
+        sessions, genome = self._write_capture(tmp_path)
+        out = tmp_path / "out.jsonl"
+        chain_key = tmp_path / "chain.key"
+        runner = CliRunner()
+        result = runner.invoke(main, [
+            "korg", "export", SECRETS["session_id"], "--session-dir", str(sessions),
+            "--genome", str(genome), "--key-file", str(tmp_path / "k.key"),
+            "--chain-key-file", str(chain_key), "-o", str(out),
+        ])
+        assert result.exit_code == 0, result.output
+        key = chain_key.read_text().strip().encode()
+        assert chain_key.stat().st_mode & 0o777 == 0o600 and len(key) >= 32
+        data = out.read_bytes()
+        assert key not in data and key.hex().encode() not in data
+        events = _events(data)
+        # Same contract as Korg's verifiers with/without --key.
+        assert verify_chain(events, key) == [] and verify_chain(events) != []
+        assert events[-1]["event"]["args"]["chain_hash"] == "hmac-sha256"
+
+        no_key = runner.invoke(main, ["korg", "verify", str(out)])
+        assert no_key.exit_code == 1 and "keyed chain" in no_key.output
+        wrong = tmp_path / "wrong.key"
+        wrong.write_text("x" * 43)
+        bad_key = runner.invoke(main, ["korg", "verify", str(out), "--chain-key-file", str(wrong)])
+        assert bad_key.exit_code == 1 and "entry_hash mismatch" in bad_key.output
+        ok = runner.invoke(main, ["korg", "verify", str(out), "--chain-key-file", str(chain_key)])
+        assert ok.exit_code == 0, ok.output

@@ -17,6 +17,7 @@ from selfhswarm.korg.export import (
     build_journal,
     export_capture,
     load_capture,
+    load_or_create_chain_key,
     verify_export,
     write_atomic,
 )
@@ -34,6 +35,7 @@ __all__ = [
     "chain_hash",
     "export_capture",
     "load_capture",
+    "load_or_create_chain_key",
     "verify_chain",
     "verify_dag",
     "verify_export",

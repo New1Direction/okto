@@ -472,16 +472,22 @@ def _resolve_capture(session: str, session_dir: str) -> pathlib.Path:
 
 
 @korg.command(name="export")
-@click.argument("session")
+@click.argument("sessions", nargs=-1)
 @click.option(
     "--session-dir",
     default=str(_app_dir() / "sessions"),
     show_default=True,
-    help="Where to look up SESSION when it is an id rather than a file.",
+    help="Where session ids (and --all) are looked up.",
 )
+@click.option("--all", "export_all", is_flag=True, default=False,
+              help="Export every capture in --session-dir.")
 @click.option(
     "--output", "-o", default=None,
-    help="Write the Korg JSONL here (mode 0600). Default: stdout.",
+    help="Write one export here (mode 0600). Default: stdout.",
+)
+@click.option(
+    "--output-dir", default=None,
+    help="Directory for batch exports, one <session-ref>.korg.jsonl per capture.",
 )
 @click.option(
     "--genome",
@@ -497,22 +503,29 @@ def _resolve_capture(session: str, session_dir: str) -> pathlib.Path:
     show_default=True,
     help="Local HMAC key for fingerprints (created on first use; never exported).",
 )
+@click.option(
+    "--chain-key-file", default=None,
+    help="HMAC-key the hash chain (Korg tamper-proof mode). Created if missing.",
+)
 def korg_export(
-    session: str,
+    sessions: tuple[str, ...],
     session_dir: str,
+    export_all: bool,
     output: str | None,
+    output_dir: str | None,
     genome_path: str,
     no_replay: bool,
     key_file: str,
+    chain_key_file: str | None,
 ) -> None:
     """
-    Export one capture as a sanitized korg-ledger@v1 JSONL journal.
+    Export captures as sanitized korg-ledger@v1 JSONL journals.
 
-    SESSION is a session id from --session-dir or a path to a capture file
-    (proxy session or `okto fabricate` output). Headers, bodies, stream bytes,
-    and mutation patterns stay local; the export carries labels, counts,
+    SESSIONS are session ids from --session-dir or paths to capture files
+    (proxy sessions or `okto fabricate` output). Headers, bodies, stream bytes,
+    and mutation patterns stay local; each export carries labels, counts,
     keyed fingerprints, replay evidence, provenance, and causal links.
-    Nothing is written if any boundary check fails.
+    Nothing is written for a capture that fails a boundary check.
     """
     import time
 
@@ -521,54 +534,101 @@ def korg_export(
         Fingerprinter,
         export_capture,
         load_capture,
+        load_or_create_chain_key,
         write_atomic,
     )
     from selfhswarm.rna_bus.ledger import GenomeLedger
 
-    capture_path = _resolve_capture(session, session_dir)
-    try:
-        capture = load_capture(capture_path)
-    except Exception as exc:
-        raise click.ClickException(f"cannot read capture: {type(exc).__name__}") from None
+    paths = [_resolve_capture(s, session_dir) for s in sessions]
+    if export_all:
+        paths += sorted(pathlib.Path(session_dir).glob("*.jsonl"))
+    paths = list(dict.fromkeys(p.resolve() for p in paths))
+    if not paths:
+        raise click.UsageError("give at least one SESSION, or --all")
+    batch = export_all or len(paths) > 1
+    if batch and not output_dir:
+        raise click.UsageError("exporting several captures needs --output-dir")
+    if batch and output:
+        raise click.UsageError("use --output-dir, not --output, for several captures")
 
     genome_file = pathlib.Path(genome_path)
     mutations = []
     if genome_file.is_file():
         ledger = asyncio.run(GenomeLedger.load("korg-export", path=genome_file))
         mutations = ledger.genome.mutations
+    fingerprinter = Fingerprinter.load_or_create(pathlib.Path(key_file))
+    chain_key = (
+        load_or_create_chain_key(pathlib.Path(chain_key_file)) if chain_key_file else None
+    )
+    err = Console(stderr=True)
 
-    try:
-        data = export_capture(
-            capture,
-            Fingerprinter.load_or_create(pathlib.Path(key_file)),
-            mutations,
-            replay=not no_replay,
-            exported_at_ms=int(time.time() * 1000),
-        )
-    except BoundaryViolationError as exc:
-        raise click.ClickException(f"export blocked at the Korg boundary: {exc}") from None
+    failures = 0
+    for path in paths:
+        try:
+            capture = load_capture(path)
+            data = export_capture(
+                capture,
+                fingerprinter,
+                mutations,
+                replay=not no_replay,
+                exported_at_ms=int(time.time() * 1000),
+                chain_key=chain_key,
+            )
+        except BoundaryViolationError as exc:
+            failures += 1
+            err.print(f"[red]✗[/red] {path.name}: blocked at the Korg boundary: {exc}",
+                      markup=True, highlight=False)
+            continue
+        except Exception as exc:
+            failures += 1
+            err.print(f"[red]✗[/red] {path.name}: cannot read capture ({type(exc).__name__})")
+            continue
 
-    if output:
-        write_atomic(data, pathlib.Path(output))
         count = data.count(b"\n")
-        Console(stderr=True).print(f"[green]✓[/green] {count} events → {output}", markup=True)
-    else:
-        click.echo(data.decode("ascii"), nl=False)
+        if batch:
+            ref = fingerprinter(f"okto-session:{capture.session.id}").split(":", 1)[1][:16]
+            target = pathlib.Path(output_dir) / f"{ref}.korg.jsonl"
+            write_atomic(data, target)
+            err.print(f"[green]✓[/green] {path.name} → {target} ({count} events)")
+        elif output:
+            write_atomic(data, pathlib.Path(output))
+            err.print(f"[green]✓[/green] {count} events → {output}")
+        else:
+            click.echo(data.decode("ascii"), nl=False)
+
+    if failures:
+        raise click.ClickException(f"{failures} of {len(paths)} export(s) failed; nothing "
+                                   "was written for them")
 
 
 @korg.command(name="verify")
-@click.argument("path", type=click.Path(exists=True, dir_okay=False))
-def korg_verify(path: str) -> None:
-    """Check an export: hash chain, causal DAG, schema allowlist, secret scan."""
+@click.argument("paths", nargs=-1, required=True,
+                type=click.Path(exists=True, dir_okay=False))
+@click.option("--chain-key-file", default=None, type=click.Path(exists=True, dir_okay=False),
+              help="Chain key for exports made with --chain-key-file.")
+def korg_verify(paths: tuple[str, ...], chain_key_file: str | None) -> None:
+    """Check exports: hash chain, causal DAG, schema allowlist, secret scan."""
     from selfhswarm.korg import verify_export
 
-    errors = verify_export(pathlib.Path(path).read_bytes())
-    if errors:
-        console.print(f"[red]✗[/red] {path}: {len(errors)} problem(s)")
-        for e in errors[:50]:
-            console.print(f"  - {e}", markup=False)
+    key = (
+        pathlib.Path(chain_key_file).read_text().strip().encode("utf-8")
+        if chain_key_file else None
+    )
+    bad = 0
+    for path in paths:
+        errors = verify_export(pathlib.Path(path).read_bytes(), key)
+        if errors:
+            bad += 1
+            console.print(f"[red]✗[/red] {path}: {len(errors)} problem(s)", highlight=False)
+            for e in errors[:50]:
+                console.print(f"  - {e}", markup=False, highlight=False)
+        else:
+            console.print(
+                f"[green]✓[/green] {path}: valid okto-korg-export@1 / korg-ledger@v1",
+                highlight=False,
+            )
+    if bad:
         sys.exit(1)
-    console.print(f"[green]✓[/green] {path}: valid okto-korg-export@1 / korg-ledger@v1")
 
 
 # ---------------------------------------------------------------------------

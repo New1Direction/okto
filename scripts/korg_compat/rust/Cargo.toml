@@ -1,0 +1,13 @@
+# Deserializes Okto exports with Korg's own Rust types. Expects the Korg repo
+# checked out at <okto>/.korg (scripts/korg_compat/run.sh does this).
+[package]
+name = "okto-korg-compat"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+korg-registry = { path = "../../../.korg/crates/korg-registry" }
+serde_json = "1"
+
+[workspace]

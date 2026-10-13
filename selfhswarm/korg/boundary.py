@@ -219,6 +219,7 @@ _KINDS: dict[str, Any] = {
     "patch_type": lambda v: v in {"literal", "regex_sub", "json_patch", "header_set"},
     "vendor": lambda v: v in KNOWN_VENDORS,
     "product": lambda v: v in KNOWN_PRODUCTS,
+    "chain_hash": lambda v: v in {"sha256", "hmac-sha256"},
     "scenario": lambda v: isinstance(v, str) and bool(re.fullmatch(r"[a-z_]{1,40}", v)),
 }
 
@@ -290,7 +291,8 @@ TOOL_SCHEMAS: dict[str, tuple[dict, dict]] = {
         _fields({"export_schema": f"const:{EXPORT_SCHEMA}", "korg_spec": "const:korg-ledger@v1",
                  "redaction_policy": f"const:{REDACTION_POLICY}",
                  "fingerprint_scheme": f"const:{FINGERPRINT_SCHEME}",
-                 "fingerprint_key_id": "key_id", "source_fingerprint": "fp"}),
+                 "fingerprint_key_id": "key_id", "source_fingerprint": "fp"},
+                {"chain_hash": "chain_hash"}),
         _fields({"events": "int", "anomalies": "int", "repairs": "int", "replay_checks": "int",
                  "withheld": "withheld"}),
     ),

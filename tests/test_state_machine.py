@@ -148,3 +148,37 @@ class TestProxyStateMachine:
         # Mutation should have been applied
         if meta.applied_mutation_id == existing.id:
             assert output == b"data: " + raw
+
+    def test_non_matching_genome_mutation_is_not_claimed_as_repair(self, clock):
+        from selfhswarm.models import HLCModel, Mutation
+
+        ping = b'{"type":"ping"}'
+        existing = Mutation(
+            hlc=HLCModel.from_hlc(clock.tick()),
+            client=AgentClient.CLAUDE,
+            scope=MutationScope.STREAM_CHUNK,
+            pattern_hex=ping.hex(),
+            patch_hex=(b"data: " + ping).hex(),
+            patch_type="literal",
+        )
+        derived = []
+        sm = ProxyStateMachine(
+            client=AgentClient.CLAUDE,
+            node_id="n",
+            session_id="s",
+            genome_mutations=[existing],
+            clock=clock,
+            on_new_mutation=derived.append,
+        )
+        other = b'{"type":"delta","text":"hi"}'
+        output, meta = sm.process_chunk(other, MutationScope.STREAM_CHUNK)
+        # The ping rule does not match, so a new rule is derived for this chunk.
+        assert meta.applied_mutation_id != existing.id
+        assert [m.id for m in derived] == [meta.applied_mutation_id]
+        assert output == b"data: " + other
+
+        # A truncated frame no rule can fix is passed through, not "repaired".
+        broken = b'data: {"type":"delta","te'
+        output, meta = sm.process_chunk(broken, MutationScope.STREAM_CHUNK)
+        assert meta.anomalous and meta.applied_mutation_id is None
+        assert output == broken

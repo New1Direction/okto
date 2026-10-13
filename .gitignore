@@ -65,3 +65,8 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# ---- Korg compatibility check (scripts/korg_compat) ----
+.korg/
+scripts/korg_compat/rust/target/
+scripts/korg_compat/rust/Cargo.lock

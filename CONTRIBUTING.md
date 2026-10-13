@@ -10,6 +10,7 @@ uv run pytest -q
 uv run ruff check .
 uv run okto --help
 uv build
+scripts/korg_compat/run.sh   # Korg compatibility (needs node; cargo optional)
 ```
 
 ## Ground rules
