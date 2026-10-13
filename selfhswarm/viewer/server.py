@@ -23,15 +23,8 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from selfhswarm.hlc import HLCClock
-from selfhswarm.models import (
-    ChunkReplay,
-    MutationScope,
-    ReplayResult,
-    Session,
-    TurnReplay,
-)
-from selfhswarm.proxy.state_machine import ProxyStateMachine
+from selfhswarm.models import ReplayResult, Session
+from selfhswarm.replay import replay_session as run_replay
 from selfhswarm.viewer.events import EventBus
 
 log = logging.getLogger(__name__)
@@ -114,66 +107,10 @@ def create_app(
             raise HTTPException(status_code=404, detail="Session not found")
 
         session = Session.model_validate(orjson.loads(p.read_bytes()))
-        clock = HLCClock(f"replay-{node_id[:8]}")
         mutations = (
             ledger.genome.for_client(session.client) if ledger else []
         )
-
-        turn_results: list[TurnReplay] = []
-        total_anomalies = 0
-        total_mutations = 0
-
-        for turn in session.turns:
-            sm = ProxyStateMachine(
-                client=session.client,
-                node_id=f"replay-{node_id[:8]}",
-                session_id=session_id,
-                genome_mutations=list(mutations),  # fresh copy per turn
-                clock=clock,
-            )
-            chunk_replays: list[ChunkReplay] = []
-            t_anomalies = 0
-            t_mutations = 0
-
-            for chunk in turn.stream_chunks:
-                raw = bytes.fromhex(chunk.raw_hex)
-                rewritten, meta = sm.process_chunk(raw, MutationScope.STREAM_CHUNK)
-
-                resolved = meta.applied_mutation_id is not None
-                cr = ChunkReplay(
-                    index=meta.index,
-                    raw_hex=chunk.raw_hex,
-                    patched_hex=rewritten.hex() if resolved else None,
-                    anomalous=meta.anomalous,
-                    anomaly_type=meta.anomaly_type,
-                    mutation_id=meta.applied_mutation_id,
-                    resolved=resolved,
-                )
-                chunk_replays.append(cr)
-                if meta.anomalous:
-                    t_anomalies += 1
-                if meta.applied_mutation_id:
-                    t_mutations += 1
-
-            turn_results.append(
-                TurnReplay(
-                    turn_index=turn.index,
-                    chunks=chunk_replays,
-                    anomalies_detected=t_anomalies,
-                    mutations_applied=t_mutations,
-                    resolved=(t_anomalies == t_mutations),
-                )
-            )
-            total_anomalies += t_anomalies
-            total_mutations += t_mutations
-
-        return ReplayResult(
-            session_id=session_id,
-            turn_results=turn_results,
-            total_anomalies=total_anomalies,
-            total_mutations_applied=total_mutations,
-            resolved=(total_anomalies == total_mutations),
-        )
+        return run_replay(session, mutations, node_id)
 
     # ------------------------------------------------------------------
     # REST: genome

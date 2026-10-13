@@ -8,6 +8,8 @@ Okto can observe request/response headers, streamed model output, tool payloads,
 
 Local CA material is generated under `~/.okto/certs`. Never commit these files.
 
+`okto korg export` writes a sanitized Korg ledger. Headers, bodies, stream bytes, and mutation patterns are never exported, and the command writes nothing if a boundary check fails (see `docs/KORG.md`). Keep the fingerprint key `~/.okto/korg_export.key` private. Report any value that crosses the Korg boundary as a security issue.
+
 ## Reporting issues
 
 Please open a private security advisory on GitHub, or contact the maintainer directly if private advisories are not enabled yet. Include:

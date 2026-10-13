@@ -19,6 +19,7 @@ Agent failures are often protocol failures: a missing SSE prefix, truncated chun
 - **Fabricates chaos sessions** for regression testing.
 - **Syncs fixes over the RNA bus** so one machine can teach the rest.
 - **Opens a live Traffic Inspector** for sessions, chunks, mutations, and replay.
+- **Exports sanitized diagnostics to [Korg](https://github.com/New1Direction/korg)** as a hash-chained `korg-ledger@v1` file. Raw captures stay local.
 
 Supported agent clients: `claude`, `gemini`, `codex`, `agy`, `kimi`, `kimi-code`, `cursor`, `opencode`, `pi`, and `hermes`.
 
@@ -58,6 +59,9 @@ okto run --client claude --broker ws://localhost:9373
 
 # Inspect the local genome.
 okto genome list
+
+# Export a capture's anomalies, repairs, and replay evidence to a Korg ledger.
+okto korg export <session-id> -o session.korg.jsonl
 ```
 
 Dashboard default: <http://127.0.0.1:7878>
@@ -66,7 +70,7 @@ Dashboard default: <http://127.0.0.1:7878>
 
 Okto creates a local CA in `~/.okto/certs` so it can inspect HTTPS traffic from child agent processes. The `run` command sets `HTTP_PROXY`, `HTTPS_PROXY`, `SSL_CERT_FILE`, and `REQUESTS_CA_BUNDLE` for the launched process.
 
-Captured sessions are stored in `~/.okto/sessions` unless `--session-dir` is provided. Review and redact captures before sharing.
+Captured sessions are stored in `~/.okto/sessions` unless `--session-dir` is provided. Review and redact captures before sharing. To share diagnostics, use `okto korg export`: it writes only labels, counts, keyed fingerprints, and causal links, and it refuses to write a file if any header, body, stream byte, or credential would cross. See [`docs/KORG.md`](docs/KORG.md).
 
 On macOS, trust the local CA with:
 
@@ -79,6 +83,7 @@ okto ca trust
 
 - [`docs/USAGE.md`](docs/USAGE.md) — install, run, dashboard, captures, genome, RNA bus.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — proxy, viewer, camouflage, ledger, security boundaries.
+- [`docs/KORG.md`](docs/KORG.md) — Korg export contract, event schema, redaction boundary.
 - [`docs/VOICE.md`](docs/VOICE.md) — anti-slop copy rules and canonical descriptions.
 - [`docs/LAUNCH_COPY.md`](docs/LAUNCH_COPY.md) — GitHub/social/demo copy.
 - [`docs/GITHUB_SETUP.md`](docs/GITHUB_SETUP.md) — repository description, topics, Pages setup, release notes.

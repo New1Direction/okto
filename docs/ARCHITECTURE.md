@@ -55,6 +55,16 @@ The RNA bus is implemented in `selfhswarm/rna_bus/`.
 
 Each mutation is stamped with a hybrid logical clock so nodes can order and merge repair rules.
 
+## 5. Korg export
+
+`selfhswarm/korg/` writes one capture as a `korg-ledger@v1` journal for [Korg](https://github.com/New1Direction/korg):
+
+- `ledger.py` handles canonical JSON, the SHA-256 hash chain, and chain and DAG verification.
+- `export.py` maps sessions, turns, anomalies, repairs, and replay results onto Korg `AgentToolCall` events.
+- `boundary.py` enforces the trust boundary: a structural allowlist, a secret scan, and canaries harvested from the source capture.
+
+Replay logic is shared with the Traffic Inspector through `selfhswarm/replay.py`. Contract and schema: [`KORG.md`](KORG.md).
+
 ## Data model
 
 Core Pydantic models live in `selfhswarm/models.py`:
@@ -76,4 +86,4 @@ Okto is intentionally powerful: it intercepts local agent traffic. Treat these a
 - raw request/response chunks,
 - mutation logs that may include byte patterns from real provider traffic.
 
-Do not commit or share captured sessions without review.
+Do not commit or share captured sessions without review. `okto korg export` is the supported way to share diagnostics: raw data stays local, and the export fails closed if anything sensitive would cross. Keep `~/.okto/korg_export.key` private.

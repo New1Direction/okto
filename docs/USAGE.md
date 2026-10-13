@@ -48,6 +48,7 @@ Default paths:
 - local CA: `~/.okto/certs`
 - session captures: `~/.okto/sessions`
 - mutation genome: `~/.okto/genome.jsonl`
+- Korg export fingerprint key: `~/.okto/korg_export.key`
 
 Captured sessions may include prompts, tool payloads, headers, and model output. Review before sharing.
 
@@ -88,6 +89,17 @@ okto genome clear
 ```
 
 The genome is an append-only set of learned repair mutations. Clear it only when you want to reset local learning.
+
+## Export to Korg
+
+Write one capture as a sanitized, hash-chained Korg ledger:
+
+```bash
+okto korg export <session-id> -o session.korg.jsonl
+okto korg verify session.korg.jsonl
+```
+
+The file holds turn summaries, anomaly labels, repair summaries, replay evidence against the current genome, provenance, and causal links. Headers, bodies, stream bytes, and mutation patterns are never written. Values that must be referenced are written as HMAC fingerprints under a local key. See [`KORG.md`](KORG.md) for the full contract.
 
 ## RNA bus
 
